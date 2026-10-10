@@ -25,6 +25,7 @@ export * from './companyInput';
 export * from './companyWorkspace';
 export * from './companyWorkspaceApprovalStatus';
 export * from './companyWorkspaceCandidatesItem';
+export * from './companyWorkspaceCandidatesItemRecommendation';
 export * from './companyWorkspaceCandidatesItemStatus';
 export * from './completionDiagnostics';
 export * from './completionDiagnosticsMessage';

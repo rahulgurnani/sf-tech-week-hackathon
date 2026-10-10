@@ -33,6 +33,10 @@ export const GetCompanyParams = zod.object({
   "token": zod.coerce.string()
 })
 
+export const getCompanyResponseCandidatesItemIntegrityFlagsCountMin = 0;
+
+
+
 export const GetCompanyResponse = zod.object({
   "id": zod.string(),
   "company": zod.string(),
@@ -65,6 +69,8 @@ export const GetCompanyResponse = zod.object({
   "email": zod.string(),
   "status": zod.enum(['Invited', 'In progress', 'Scoring', 'Ready']),
   "score": zod.number().nullable(),
+  "recommendation": zod.union([zod.literal('Advance'),zod.literal('Hold'),zod.literal('Not now'),zod.literal(null)]).nullable(),
+  "integrity_flags_count": zod.number().int().min(getCompanyResponseCandidatesItemIntegrityFlagsCountMin),
   "scoring_error": zod.string().nullable(),
   "callback_at": zod.string().nullable(),
   "invite_path": zod.string(),

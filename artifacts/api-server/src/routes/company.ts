@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { randomBytes, createHash } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, auditionsTable, auditionQuestionsTable, candidatesTable, sessionsTable, evaluationsTable } from "@workspace/db";
 import { createNebiusClient } from "../lib/nebius-client";
@@ -78,19 +78,24 @@ router.get("/company/:token", async (_req, res) => {
     technical: { requirement: technical.requirement, prompt: technical.prompt, follow_up: "", reference_note: technical.referenceNote ?? null },
     starter_code: a.starterCode, language: a.editorLanguage,
   } : null;
-  const rows = await db.select({ candidate: candidatesTable, session: sessionsTable, evaluation: evaluationsTable })
+  const rows = await db.select({ candidate: candidatesTable, session: sessionsTable, evaluation: evaluationsTable,
+    integrityCount: sql<number>`(SELECT count(*) FROM integrity_events i WHERE i.session_id = ${sessionsTable.id})`.mapWith(Number) })
     .from(candidatesTable).leftJoin(sessionsTable, eq(sessionsTable.candidateId, candidatesTable.id))
-    .leftJoin(evaluationsTable, eq(evaluationsTable.sessionId, sessionsTable.id)).where(eq(candidatesTable.auditionId, a.id));
+    .leftJoin(evaluationsTable, eq(evaluationsTable.sessionId, sessionsTable.id)).where(and(
+      eq(candidatesTable.auditionId, a.id), isNull(candidatesTable.archivedAt)));
   for (const row of rows) if (row.session?.status === "Submitted" && !row.evaluation) await enqueueScoring(row.session.id);
   res.json({ id: a.id, company: a.company, contact_email: a.contactEmail, role: a.role, job_description: a.jobDescription,
     approval_status: a.approvalStatus, draft: a.draftQuestions ?? existingDraft, snapshot_hash: a.snapshotHash,
     approved_at: a.approvedAt, duration_seconds: a.durationSeconds,
-    candidates: rows.map(({ candidate: c, session: s, evaluation: e }) => ({
+    candidates: rows.map(({ candidate: c, session: s, evaluation: e, integrityCount }) => ({
       id: c.id, name: c.name, email: c.email, status: !s ? "Invited" : s.status === "In progress" ? "In progress" :
-        e?.status === "ready" ? "Ready" : "Scoring", score: e?.overallScore ?? null,
+        e?.status === "ready" && e.report ? "Ready" : "Scoring", score: e?.status === "ready" ? e.overallScore : null,
+      recommendation: e?.status === "ready" ? (e.report as { recommendation?: string } | null)?.recommendation ?? null : null,
+      integrity_flags_count: integrityCount,
       scoring_error: e?.status === "error" ? e.error : null, callback_at: c.callbackAt,
       invite_path: `/invite/${c.inviteToken}`, report_path: s?.status === "Submitted" ? `/report/${c.id}?company=${a.inviteToken}` : null,
-    })),
+    })).sort((left, right) => Number(Boolean(right.report_path)) - Number(Boolean(left.report_path)) ||
+      (right.score ?? -1) - (left.score ?? -1) || left.name.localeCompare(right.name)),
   });
 });
 router.post("/company/:token/draft", async (req, res) => {
@@ -148,6 +153,7 @@ router.post("/company/:token/candidates", async (req, res) => {
   const a = res.locals.audition;
   if (a.approvalStatus !== "approved") { res.status(409).json({ message: "Approve the question set before inviting candidates." }); return; }
   const body = inviteInput.parse(req.body);
+  if (body.name.toLowerCase() === "your name") { res.status(400).json({ message: "Enter the candidate's actual name." }); return; }
   const [candidate] = await db.insert(candidatesTable).values({
     auditionId: a.id, name: body.name, email: body.email.toLowerCase(), inviteToken: randomBytes(32).toString("hex"),
   }).returning();
@@ -156,11 +162,15 @@ router.post("/company/:token/candidates", async (req, res) => {
 router.post("/company/:token/candidates/:candidateId/callback", async (req, res) => {
   if (!/^[a-f0-9-]{36}$/.test(req.params.candidateId)) { res.status(400).json({ message: "Invalid candidate ID." }); return; }
   const a = res.locals.audition;
-  const [session] = await db.select().from(sessionsTable).where(eq(sessionsTable.candidateId, req.params.candidateId));
-  if (!session || session.status !== "Submitted") { res.status(409).json({ message: "The candidate must submit an audition before a callback." }); return; }
+  const [ownedCandidate] = await db.select({ id: candidatesTable.id }).from(candidatesTable).where(and(
+    eq(candidatesTable.id, req.params.candidateId), eq(candidatesTable.auditionId, a.id)));
+  if (!ownedCandidate) { res.status(404).json({ message: "Candidate not found." }); return; }
   const [candidate] = await db.update(candidatesTable).set({ callbackAt: new Date() }).where(and(
-    eq(candidatesTable.id, req.params.candidateId), eq(candidatesTable.auditionId, a.id))).returning();
-  if (!candidate) { res.status(404).json({ message: "Candidate not found." }); return; }
+    eq(candidatesTable.id, req.params.candidateId), eq(candidatesTable.auditionId, a.id),
+    sql`EXISTS (SELECT 1 FROM sessions s JOIN evaluations e ON e.session_id = s.id
+      WHERE s.candidate_id = ${candidatesTable.id} AND s.status = 'Submitted'
+      AND e.status = 'ready' AND e.report IS NOT NULL)`)).returning();
+  if (!candidate) { res.status(409).json({ message: "The candidate's report must be ready before a callback." }); return; }
   const subject = `Callback: ${a.role} at ${a.company}`;
   const body = `Hi ${candidate.name},\n\nThank you for completing your Audition for ${a.role}. We'd like to invite you to a human interview with ${a.company}.\n\nPlease reply with your availability.\n\n${a.company}${a.contactEmail ? `\n${a.contactEmail}` : ""}`;
   res.json({ marked: true, mailto: `mailto:${encodeURIComponent(candidate.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}` });

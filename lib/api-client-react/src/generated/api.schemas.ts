@@ -80,6 +80,18 @@ export const CompanyWorkspaceCandidatesItemStatus = {
   Ready: 'Ready',
 } as const;
 
+/**
+ * @nullable
+ */
+export type CompanyWorkspaceCandidatesItemRecommendation = typeof CompanyWorkspaceCandidatesItemRecommendation[keyof typeof CompanyWorkspaceCandidatesItemRecommendation] | null;
+
+
+export const CompanyWorkspaceCandidatesItemRecommendation = {
+  Advance: 'Advance',
+  Hold: 'Hold',
+  Not_now: 'Not now',
+} as const;
+
 export type CompanyWorkspaceCandidatesItem = {
   id: string;
   name: string;
@@ -87,6 +99,10 @@ export type CompanyWorkspaceCandidatesItem = {
   status: CompanyWorkspaceCandidatesItemStatus;
   /** @nullable */
   score: number | null;
+  /** @nullable */
+  recommendation: CompanyWorkspaceCandidatesItemRecommendation;
+  /** @minimum 0 */
+  integrity_flags_count: number;
   /** @nullable */
   scoring_error: string | null;
   /** @nullable */

@@ -50,3 +50,10 @@ audition receive the same approved questions and time limits.
 
 **How to apply:** Allow company editing only before approval; keep private scoring
 references out of candidate and voice-agent payloads.
+
+Original demo candidates that have been archived must remain stored, including
+their invitations, sessions and reports.
+
+**Why:** The user asked to hide candidates for the demo while explicitly keeping their data.
+
+**How to apply:** Hide archived candidates from dashboard lists; do not purge their data as test cleanup.

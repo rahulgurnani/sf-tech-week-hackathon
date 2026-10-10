@@ -642,13 +642,15 @@ components:
           type: array
           items:
             type: object
-            required: [id, name, email, status, score, scoring_error, callback_at, invite_path, report_path]
+            required: [id, name, email, status, score, recommendation, integrity_flags_count, scoring_error, callback_at, invite_path, report_path]
             properties:
               id: { type: string }
               name: { type: string }
               email: { type: string }
               status: { type: string, enum: [Invited, In progress, Scoring, Ready] }
               score: { type: [number, "null"] }
+              recommendation: { type: [string, "null"], enum: [Advance, Hold, Not now, null] }
+              integrity_flags_count: { type: integer, minimum: 0 }
               scoring_error: { type: [string, "null"] }
               callback_at: { type: [string, "null"] }
               invite_path: { type: string }

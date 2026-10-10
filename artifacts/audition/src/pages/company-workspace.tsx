@@ -54,13 +54,15 @@ function CandidateTable({ candidates, token, onCallback, callbackPending, onCopy
   copiedPath: string;
   showOnlyCallbacks?: boolean;
 }) {
-  const rows = showOnlyCallbacks ? candidates : candidates;
+  const rows = candidates.filter(candidate => !showOnlyCallbacks || Boolean(candidate.report_path))
+    .slice().sort((left, right) => Number(Boolean(right.report_path)) - Number(Boolean(left.report_path)) ||
+      (right.score ?? -1) - (left.score ?? -1) || left.name.localeCompare(right.name));
   if (!rows.length) {
-    return <div className="candidate-empty"><Users size={23} style={{ margin: '0 auto 12px', color: '#9aa9ae' }} /><strong>{showOnlyCallbacks ? 'No callbacks marked yet' : 'No candidates invited yet'}</strong>{showOnlyCallbacks ? 'When your team marks a candidate for callback, they’ll appear here.' : 'Once the questions are approved, invite candidates to complete the same short audition.'}</div>;
+    return <div className="candidate-empty"><Users size={23} style={{ margin: '0 auto 12px', color: '#9aa9ae' }} /><strong>{showOnlyCallbacks ? 'No finished auditions yet' : 'No candidates invited yet'}</strong>{showOnlyCallbacks ? 'Finished candidates appear here with their recommendation. Send callback is available when their report is ready.' : 'Once the questions are approved, invite candidates to complete the same short audition.'}</div>;
   }
   return (
     <table className="candidate-table">
-      <thead><tr><th>Candidate</th><th>Status</th><th>Evidence</th><th>{showOnlyCallbacks ? 'Callback' : 'Invite / review'}</th></tr></thead>
+      <thead><tr><th>Candidate</th><th>Status</th><th>Recommendation</th><th>Overall score</th><th>Integrity flags</th><th>{showOnlyCallbacks ? 'Callback' : 'Invite / review'}</th></tr></thead>
       <tbody>
         {rows.map((candidate) => (
           <tr key={candidate.id} data-testid={`row-candidate-${candidate.id}`}>
@@ -71,14 +73,18 @@ function CandidateTable({ candidates, token, onCallback, callbackPending, onCopy
             </td>
             <td><span className={`company-status ${candidateStatusClass(candidate.status)}`}>{candidate.status}</span>{candidate.scoring_error && <div className="company-card-note" style={{ color: '#ae4b46', maxWidth: 220, marginTop: 6 }} data-testid={`error-scoring-${candidate.id}`}>{candidate.scoring_error}</div>}</td>
             <td>
-              {candidate.score === null ? <span style={{ color: '#98a5aa' }}>Not available</span> : <strong style={{ color: '#2b635a', fontVariantNumeric: 'tabular-nums' }}>{candidate.score}</strong>}
+              {candidate.recommendation ?? (candidate.status === 'Scoring' ? 'Scoring…' : '—')}
+            </td>
+            <td>
+              {candidate.score === null ? <span style={{ color: '#98a5aa' }}>—</span> : <strong style={{ color: '#2b635a', fontVariantNumeric: 'tabular-nums' }}>{candidate.score.toFixed(2)} / 4</strong>}
               {candidate.callback_at && <span className="company-callback-date" data-testid={`callback-date-${candidate.id}`}><CheckCircle2 size={12} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />Marked {dateLabel(candidate.callback_at)}</span>}
             </td>
+            <td>{candidate.integrity_flags_count ?? 0}</td>
             <td>
               <div className="candidate-actions">
                 {candidate.report_path && <Link href={reportLink(candidate.report_path, token)} className="company-btn compact" data-testid={`link-report-${candidate.id}`}><FileText size={13} />Report</Link>}
                 {!candidate.report_path && candidate.invite_path && <button type="button" className="company-btn compact" onClick={() => onCopy(candidate.invite_path)} data-testid={`button-copy-invite-${candidate.id}`}><Clipboard size={13} />{copiedPath === candidate.invite_path ? 'Copied' : 'Copy invite link'}</button>}
-                {candidate.callback_at ? <span className="company-status approved">Callback marked</span> : (
+                {candidate.callback_at ? <span className="company-status approved">Callback marked</span> : candidate.status === 'Ready' && (
                   <button type="button" className="company-btn compact" disabled={callbackPending || candidate.status !== 'Ready'} onClick={() => onCallback(candidate.id)} title={candidate.status !== 'Ready' ? 'Available when scoring is ready' : 'Mark this candidate for a human callback'} data-testid={`button-callback-${candidate.id}`}><ArrowDownRight size={13} />{callbackPending ? 'Preparing…' : 'Send callback'}</button>
                 )}
               </div>
@@ -134,6 +140,8 @@ export default function CompanyWorkspacePage() {
       email: localInvite.email,
       status: 'Invited',
       score: null,
+      recommendation: null,
+      integrity_flags_count: 0,
       scoring_error: null,
       callback_at: null,
       invite_path: localInvite.invite_path,
@@ -234,7 +242,7 @@ export default function CompanyWorkspacePage() {
               <div>
                 <div className="company-kicker">{callbacksView ? 'Human review' : 'Hiring workspace'} <span style={{ color: '#b0bdc1', margin: '0 5px' }}>/</span> {workspace.company}</div>
                 <h1 className="company-title">{callbacksView ? 'Callbacks' : workspace.role}</h1>
-                <p className="company-subtitle">{callbacksView ? 'A focused queue for the people your team wants to meet. Audition shares evidence; your team makes the decision.' : `A consistent, ${Math.round(workspace.duration_seconds / 60)}-minute audition for every candidate. Review the question set first, then invite your shortlist.`}</p>
+                <p className="company-subtitle">{callbacksView ? 'All finished auditions, highest score first. Review the recommendation, then choose who to invite to a human interview.' : `A consistent, ${Math.round(workspace.duration_seconds / 60)}-minute audition for every candidate. Review the question set first, then invite your shortlist.`}</p>
               </div>
               <span className={`company-status ${isApproved ? 'approved' : ''}`} data-testid="status-approval">{isApproved ? 'Questions approved' : 'Draft in progress'}</span>
             </div>
@@ -242,7 +250,7 @@ export default function CompanyWorkspacePage() {
             {callbacksView ? (
               <>
                 <div className="company-metrics">
-                  <div className="company-metric"><div className="company-metric-label">Candidates</div><div className="company-metric-value">{candidates.length}</div><div className="company-metric-caption">Invited to the same audition</div></div>
+                  <div className="company-metric"><div className="company-metric-label">Finished auditions</div><div className="company-metric-value">{candidates.filter(candidate => Boolean(candidate.report_path)).length}</div><div className="company-metric-caption">Available for human review</div></div>
                   <div className="company-metric"><div className="company-metric-label">Ready for review</div><div className="company-metric-value">{candidates.filter((candidate) => candidate.status === 'Ready').length}</div><div className="company-metric-caption">Evidence reports available</div></div>
                   <div className="company-metric"><div className="company-metric-label">Callbacks marked</div><div className="company-metric-value">{candidates.filter((candidate) => Boolean(candidate.callback_at)).length}</div><div className="company-metric-caption">Human follow-up requested</div></div>
                 </div>
@@ -308,7 +316,7 @@ export default function CompanyWorkspacePage() {
                     {inviteOpen && isApproved && (
                       <form className="company-form" onSubmit={handleInvite} style={{ padding: 15, marginBottom: 17, border: '1px solid #e6edef', borderRadius: 8, background: '#fafcfc' }}>
                         <div className="company-form-grid">
-                          <div className="company-field"><label htmlFor="candidate-name">Candidate name</label><input id="candidate-name" required maxLength={120} value={candidateName} onChange={(event) => setCandidateName(event.target.value)} placeholder="Full name" data-testid="input-candidate-name" /></div>
+                          <div className="company-field"><label htmlFor="candidate-name">Candidate name</label><input id="candidate-name" required maxLength={120} value={candidateName} onChange={(event) => setCandidateName(event.target.value)} placeholder="Your name" data-testid="input-candidate-name" /></div>
                           <div className="company-field"><label htmlFor="candidate-email">Candidate email</label><input id="candidate-email" required type="email" value={candidateEmail} onChange={(event) => setCandidateEmail(event.target.value)} placeholder="name@example.com" data-testid="input-candidate-email" /></div>
                         </div>
                         {inviteError && <div className="company-error" role="alert">{inviteError}</div>}

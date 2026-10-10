@@ -5,6 +5,7 @@
  * Audition foundation and development-only integration diagnostics. Audition domain endpoints remain 501 stubs.
  * OpenAPI spec version: 0.2.0
  */
+import type { CompanyWorkspaceCandidatesItemRecommendation } from './companyWorkspaceCandidatesItemRecommendation';
 import type { CompanyWorkspaceCandidatesItemStatus } from './companyWorkspaceCandidatesItemStatus';
 
 export type CompanyWorkspaceCandidatesItem = {
@@ -14,6 +15,10 @@ export type CompanyWorkspaceCandidatesItem = {
   status: CompanyWorkspaceCandidatesItemStatus;
   /** @nullable */
   score: number | null;
+  /** @nullable */
+  recommendation: CompanyWorkspaceCandidatesItemRecommendation;
+  /** @minimum 0 */
+  integrity_flags_count: number;
   /** @nullable */
   scoring_error: string | null;
   /** @nullable */

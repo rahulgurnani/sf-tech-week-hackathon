@@ -217,7 +217,7 @@ function ReadyStage(props: ReadyStageProps) {
         <h2>Settle in. This is your time.</h2>
         <p className="ca-lede">You’ll have a short live voice conversation, then a focused coding task. A human on the hiring team will review the session before making a decision.</p>
         <div className="ca-field-grid">
-          <div className="ca-field"><label htmlFor="candidate-name">Your name</label><input id="candidate-name" autoComplete="name" value={props.candidateName} onChange={(event) => props.setCandidateName(event.target.value)} /></div>
+          <div className="ca-field"><label htmlFor="candidate-name">Your name</label><input id="candidate-name" autoComplete="name" placeholder="Your name" value={props.candidateName} onChange={(event) => props.setCandidateName(event.target.value)} /></div>
           <div className="ca-field"><label htmlFor="candidate-email">Email address</label><input id="candidate-email" type="email" autoComplete="email" value={props.candidateEmail} onChange={(event) => props.setCandidateEmail(event.target.value)} /></div>
         </div>
         <label className="ca-check"><input type="checkbox" checked={props.screenConsent} onChange={(event) => props.setScreenConsent(event.target.checked)} /><span>I consent to sharing my entire monitor (screen only, not a window or browser tab). Private technical screenshots are captured every 10 seconds for the hiring team’s review.</span></label>

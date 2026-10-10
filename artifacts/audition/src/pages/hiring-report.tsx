@@ -330,7 +330,10 @@ export default function HiringReportPage() {
         <div className="hr-topbar-inner">
           <Link href={companyHref} className="hr-back-link" data-testid="link-back-company"><ArrowLeft size={16} /> Back to company</Link>
           <AuditionLogo className="hr-brand" />
-          <div className="hr-secure-note"><ShieldCheck size={14} /> Confidential candidate evidence</div>
+          <div className="hr-secure-note">
+            {tokenValid && <Link href={`${companyHref}/callbacks`} className="hr-back-link" data-testid="link-report-callbacks">Callbacks</Link>}
+            <ShieldCheck size={14} /> Confidential candidate evidence
+          </div>
         </div>
       </header>
       <div className="hr-page">

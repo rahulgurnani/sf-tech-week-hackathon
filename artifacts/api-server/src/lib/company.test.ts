@@ -45,12 +45,20 @@ test("Company lifecycle: live draft, editable approval, immutable hash, invites 
     assert.equal(JSON.stringify(room.data).includes('"referenceNote"'), false);
     assert.equal((await request(`/review/${candidateId}`, undefined, candidateToken)).status, 401);
     assert.equal((await request(prefix + `/candidates/${candidateId}/callback`, {})).status, 409);
-    await db.insert(sessionsTable).values({ candidateId: candidateId!, durationSeconds: 120, behavioralSeconds: 60,
-      status: "Submitted", serverStartTime: new Date(Date.now() - 10000), submittedAt: new Date(), finishReason: "conversation_ended" });
+    const [submitted] = await db.insert(sessionsTable).values({ candidateId: candidateId!, durationSeconds: 120, behavioralSeconds: 60,
+      status: "Submitted", serverStartTime: new Date(Date.now() - 10000), submittedAt: new Date(), finishReason: "conversation_ended" }).returning();
+    assert.equal((await request(prefix + `/candidates/${candidateId}/callback`, {})).status, 409);
+    await db.insert(evaluationsTable).values({ sessionId: submitted.id, status: "ready", overallScore: 3,
+      spokenSummaryText: "Dashboard readiness test fixture.", report: { recommendation: "Hold" } });
     const callback = await request(prefix + `/candidates/${candidateId}/callback`, {});
     assert.equal(callback.status, 200); assert.equal(callback.data.marked, true); assert.match(callback.data.mailto, /^mailto:/);
     const final = await request(prefix);
     assert.equal(final.data.candidates[0].callback_at !== null, true);
+    assert.equal(final.data.candidates[0].recommendation, "Hold");
+    assert.equal(final.data.candidates[0].integrity_flags_count, 0);
+    await db.update(candidatesTable).set({ archivedAt: new Date() }).where(eq(candidatesTable.id, candidateId!));
+    assert.equal((await request(prefix)).data.candidates.length, 0);
+    assert.equal((await db.select().from(candidatesTable).where(eq(candidatesTable.id, candidateId!))).length, 1);
     assert.equal(final.data.snapshot_hash, approvals[0].data.snapshot_hash);
     assert.equal((await db.select().from(auditionQuestionsTable).where(eq(auditionQuestionsTable.auditionId, auditionId!))).length, 2);
   } finally {

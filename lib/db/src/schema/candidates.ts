@@ -5,6 +5,7 @@ import { auditionsTable } from "./auditions";
 import { candidateStatus } from "./enums";
 
 export const candidatesTable = pgTable("candidates", {
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   callbackAt: timestamp("callback_at", { withTimezone: true }),
   id: uuid("id").primaryKey().defaultRandom(),
   inviteToken: text("invite_token").unique(),
