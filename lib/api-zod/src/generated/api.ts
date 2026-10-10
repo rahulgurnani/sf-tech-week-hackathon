@@ -13,6 +13,9 @@ import * as zod from 'zod';
  */
 export const getAdminHealthResponseChecksItemLatencyMsMin = 0;
 
+export const getAdminHealthResponseChecksItemHttpStatusMin = 100;
+export const getAdminHealthResponseChecksItemHttpStatusMax = 599;
+
 
 
 export const GetAdminHealthResponse = zod.object({
@@ -27,6 +30,26 @@ export const GetAdminHealthResponse = zod.object({
   "checked_at": zod.coerce.date().nullable(),
   "latency_ms": zod.number().int().min(getAdminHealthResponseChecksItemLatencyMsMin).nullable(),
   "model_ids": zod.array(zod.string()).optional(),
+  "configured_model": zod.string().optional().describe('Trimmed non-sensitive model identifier actually sent to Nebius'),
+  "model_env": zod.enum(['NEBIUS_TEXT_MODEL', 'NEBIUS_VISION_MODEL']).optional(),
+  "model_in_catalog": zod.boolean().nullish().describe('Exact case-sensitive catalog membership; null until verified'),
+  "model_catalog_error": zod.string().optional(),
+  "http_status": zod.number().int().min(getAdminHealthResponseChecksItemHttpStatusMin).max(getAdminHealthResponseChecksItemHttpStatusMax).nullish().describe('Upstream provider status'),
+  "error_response_body": zod.string().optional().describe('Full upstream error body with credentials and signed URLs redacted'),
+  "request_endpoint": zod.string().optional(),
+  "request_method": zod.string().optional(),
+  "request_body": zod.string().optional().describe('Non-sensitive diagnostic JSON payload; excludes authorization headers'),
+  "completion_details": zod.object({
+  "finish_reason": zod.string().nullable(),
+  "message": zod.object({
+  "content": zod.string().nullable(),
+  "reasoning_content": zod.string().nullable()
+}),
+  "usage": zod.record(zod.string(), zod.unknown()).nullable()
+}).optional(),
+  "output_source": zod.enum(['content', 'reasoning_content']).optional().describe('Reasoning fallback is permitted only for connection diagnostics'),
+  "thinking_disabled_requested": zod.boolean().optional(),
+  "thinking_parameter_error": zod.string().optional().describe('Full redacted provider rejection of the optional thinking parameter'),
   "output": zod.string().optional(),
   "image_data_url": zod.string().optional().describe('Non-sensitive fixed test image used for the vision request'),
   "audio_url": zod.string().optional().describe('Same-origin temporary audio path; no API key'),
@@ -44,6 +67,9 @@ export const RunAdminHealthCheckParams = zod.object({
 
 export const runAdminHealthCheckResponseLatencyMsMin = 0;
 
+export const runAdminHealthCheckResponseHttpStatusMin = 100;
+export const runAdminHealthCheckResponseHttpStatusMax = 599;
+
 
 
 export const RunAdminHealthCheckResponse = zod.object({
@@ -56,6 +82,26 @@ export const RunAdminHealthCheckResponse = zod.object({
   "checked_at": zod.coerce.date().nullable(),
   "latency_ms": zod.number().int().min(runAdminHealthCheckResponseLatencyMsMin).nullable(),
   "model_ids": zod.array(zod.string()).optional(),
+  "configured_model": zod.string().optional().describe('Trimmed non-sensitive model identifier actually sent to Nebius'),
+  "model_env": zod.enum(['NEBIUS_TEXT_MODEL', 'NEBIUS_VISION_MODEL']).optional(),
+  "model_in_catalog": zod.boolean().nullish().describe('Exact case-sensitive catalog membership; null until verified'),
+  "model_catalog_error": zod.string().optional(),
+  "http_status": zod.number().int().min(runAdminHealthCheckResponseHttpStatusMin).max(runAdminHealthCheckResponseHttpStatusMax).nullish().describe('Upstream provider status'),
+  "error_response_body": zod.string().optional().describe('Full upstream error body with credentials and signed URLs redacted'),
+  "request_endpoint": zod.string().optional(),
+  "request_method": zod.string().optional(),
+  "request_body": zod.string().optional().describe('Non-sensitive diagnostic JSON payload; excludes authorization headers'),
+  "completion_details": zod.object({
+  "finish_reason": zod.string().nullable(),
+  "message": zod.object({
+  "content": zod.string().nullable(),
+  "reasoning_content": zod.string().nullable()
+}),
+  "usage": zod.record(zod.string(), zod.unknown()).nullable()
+}).optional(),
+  "output_source": zod.enum(['content', 'reasoning_content']).optional().describe('Reasoning fallback is permitted only for connection diagnostics'),
+  "thinking_disabled_requested": zod.boolean().optional(),
+  "thinking_parameter_error": zod.string().optional().describe('Full redacted provider rejection of the optional thinking parameter'),
   "output": zod.string().optional(),
   "image_data_url": zod.string().optional().describe('Non-sensitive fixed test image used for the vision request'),
   "audio_url": zod.string().optional().describe('Same-origin temporary audio path; no API key'),

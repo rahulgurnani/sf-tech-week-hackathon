@@ -1,9 +1,12 @@
 import { Router, type IRouter } from "express";
 import { GetAdminHealthResponse, RunAdminHealthCheckParams, RunAdminHealthCheckResponse } from "@workspace/api-zod";
 import { createHealthDiagnostics } from "../lib/health-diagnostics";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
-const diagnostics = createHealthDiagnostics();
+const diagnostics = createHealthDiagnostics({
+  logCompletion: event => logger.info({ nebius_completion: event }, "Nebius health completion"),
+});
 
 router.use("/admin/health", (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");

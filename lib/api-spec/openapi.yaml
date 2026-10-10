@@ -364,10 +364,35 @@ components:
         checked_at: { type: [string, "null"], format: date-time }
         latency_ms: { type: [integer, "null"], minimum: 0 }
         model_ids: { type: array, items: { type: string } }
+        configured_model: { type: string, description: Trimmed non-sensitive model identifier actually sent to Nebius }
+        model_env: { type: string, enum: [NEBIUS_TEXT_MODEL, NEBIUS_VISION_MODEL] }
+        model_in_catalog: { type: [boolean, "null"], description: Exact case-sensitive catalog membership; null until verified }
+        model_catalog_error: { type: string }
+        http_status: { type: [integer, "null"], minimum: 100, maximum: 599, description: Upstream provider status, not the diagnostics endpoint status }
+        error_response_body: { type: string, description: Full upstream error body with credentials and signed URLs redacted }
+        request_endpoint: { type: string }
+        request_method: { type: string }
+        request_body: { type: string, description: Non-sensitive diagnostic JSON payload; excludes authorization headers }
+        completion_details: { $ref: "#/components/schemas/CompletionDiagnostics" }
+        output_source: { type: string, enum: [content, reasoning_content], description: Reasoning fallback is permitted only for connection diagnostics }
+        thinking_disabled_requested: { type: boolean }
+        thinking_parameter_error: { type: string, description: Full redacted provider rejection of the optional thinking parameter }
         output: { type: string }
         image_data_url: { type: string, description: Non-sensitive fixed test image used for the vision request }
         audio_url: { type: string, description: Same-origin temporary audio path; no API key }
         signed_url_available: { type: boolean, description: Signed URL validated server-side; token deliberately not returned to diagnostics browser }
+    CompletionDiagnostics:
+      type: object
+      required: [finish_reason, message, usage]
+      properties:
+        finish_reason: { type: [string, "null"] }
+        message:
+          type: object
+          required: [content, reasoning_content]
+          properties:
+            content: { type: [string, "null"] }
+            reasoning_content: { type: [string, "null"] }
+        usage: { type: [object, "null"], additionalProperties: true }
     HealthStatus:
       type: object
       required: [status]

@@ -5,7 +5,10 @@
  * Audition foundation and development-only integration diagnostics. Audition domain endpoints remain 501 stubs.
  * OpenAPI spec version: 0.2.0
  */
+import type { CompletionDiagnostics } from './completionDiagnostics';
 import type { ConnectionCheckId } from './connectionCheckId';
+import type { ConnectionCheckModelEnv } from './connectionCheckModelEnv';
+import type { ConnectionCheckOutputSource } from './connectionCheckOutputSource';
 import type { ConnectionCheckStatus } from './connectionCheckStatus';
 
 export interface ConnectionCheck {
@@ -24,6 +27,34 @@ export interface ConnectionCheck {
      */
   latency_ms: number | null;
   model_ids?: string[];
+  /** Trimmed non-sensitive model identifier actually sent to Nebius */
+  configured_model?: string;
+  model_env?: ConnectionCheckModelEnv;
+  /**
+     * Exact case-sensitive catalog membership; null until verified
+     * @nullable
+     */
+  model_in_catalog?: boolean | null;
+  model_catalog_error?: string;
+  /**
+     * Upstream provider status
+     * @minimum 100
+     * @maximum 599
+     * @nullable
+     */
+  http_status?: number | null;
+  /** Full upstream error body with credentials and signed URLs redacted */
+  error_response_body?: string;
+  request_endpoint?: string;
+  request_method?: string;
+  /** Non-sensitive diagnostic JSON payload; excludes authorization headers */
+  request_body?: string;
+  completion_details?: CompletionDiagnostics;
+  /** Reasoning fallback is permitted only for connection diagnostics */
+  output_source?: ConnectionCheckOutputSource;
+  thinking_disabled_requested?: boolean;
+  /** Full redacted provider rejection of the optional thinking parameter */
+  thinking_parameter_error?: string;
   output?: string;
   /** Non-sensitive fixed test image used for the vision request */
   image_data_url?: string;

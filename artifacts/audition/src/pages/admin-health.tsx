@@ -54,11 +54,62 @@ function formatCheckedAt(value: string | null) {
 function CheckDetails({ check }: { check: ConnectionCheck }) {
   return (
     <div className="check-detail" data-testid={`details-check-${check.id}`}>
+      {check.configured_model !== undefined && (
+        <div className="detail-line">
+          <span className="detail-label">{check.model_env} · trimmed value</span>
+          <code className="model-tag" data-testid={`configured-model-${check.id}`}>{check.configured_model || '(empty)'}</code>
+          <div data-testid={`catalog-match-${check.id}`}>
+            {check.model_in_catalog === true ? 'Exact match in the model catalog.'
+              : check.model_in_catalog === false ? 'Not found in the model catalog. Check the exact ID, including case.'
+              : 'Catalog membership has not been verified.'}
+          </div>
+          {check.model_catalog_error && <div className="error-text">{check.model_catalog_error}</div>}
+        </div>
+      )}
+      {check.http_status != null && (
+        <div className="detail-line">
+          <span className="detail-label">Provider HTTP status</span>
+          <code data-testid={`http-status-${check.id}`}>{check.http_status}</code>
+        </div>
+      )}
       {check.error && (
         <div className="detail-line">
           <span className="detail-label">Provider error</span>
           <div className="error-text" data-testid={`error-check-${check.id}`}>{check.error}</div>
         </div>
+      )}
+      {check.error_response_body !== undefined && (
+        <div className="detail-line">
+          <span className="detail-label">Full provider error response body · credentials redacted</span>
+          <pre className="error-text provider-response" data-testid={`error-body-${check.id}`}>{check.error_response_body || '(empty response body)'}</pre>
+        </div>
+      )}
+      {check.request_endpoint && (
+        <details className="detail-line">
+          <summary className="detail-label">Request details · no authorization headers</summary>
+          <code>{check.request_method} {check.request_endpoint}</code>
+          <pre className="response-box provider-response">{check.request_body}</pre>
+        </details>
+      )}
+      {check.completion_details && (
+        <div className="detail-line">
+          <span className="detail-label">Completion diagnostics · also logged on the server</span>
+          <pre className="response-box provider-response" data-testid={`completion-diagnostics-${check.id}`}>
+            {JSON.stringify(check.completion_details, null, 2)}
+          </pre>
+          <div>Output source: <code>{check.output_source ?? 'none'}</code></div>
+          <div>Disable-thinking parameter: {check.thinking_disabled_requested
+            ? 'sent and request accepted' : 'not supported by this provider; omitted on retry'}</div>
+          {check.output_source === 'reasoning_content' && (
+            <div className="error-text">Health check only: using reasoning text because message.content is empty. Real scoring must require content with response_format: json_object.</div>
+          )}
+        </div>
+      )}
+      {check.thinking_parameter_error && (
+        <details className="detail-line">
+          <summary className="detail-label">Provider rejected the optional thinking parameter</summary>
+          <pre className="error-text provider-response">{check.thinking_parameter_error}</pre>
+        </details>
       )}
       {check.missing_secrets?.length > 0 && (
         <div className="detail-line">

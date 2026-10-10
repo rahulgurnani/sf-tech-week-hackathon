@@ -238,6 +238,38 @@ limit accidental credit consumption. Tests run only on explicit user action.
 No API key or upstream bearer header reaches the browser. Provider errors are
 returned with HTTP codes and credential values redacted.
 
+Each provider result now includes the actual upstream `http_status` (null when
+no response was received) and, on non-2xx responses, `error_response_body`.
+The latter preserves the entire received error body, including nested fields,
+whitespace and plain-text responses; only credentials and signed capabilities
+are redacted. The 1 MiB diagnostic response safety limit still applies; an
+oversized body is reported explicitly rather than silently truncated.
+
+Nebius text/vision checks expose public `configured_model` (trimmed),
+`model_env`, and exact case-sensitive `model_in_catalog` (null if unavailable).
+They verify catalog membership through the shared cached model-catalog check,
+but still submit the requested completion so its real provider error is shown.
+The page also exposes the actual `request_method`, `request_endpoint`, and
+`request_body` without authorization headers. Model IDs are not credentials.
+HTTP 200 responses that fail diagnostic validation also show their complete
+received body (for example, an empty completion with `finish_reason: length`).
+Text and vision diagnostic budgets are both 1024 completion tokens; these
+include reasoning tokens on thinking models. Both requests send
+`chat_template_kwargs: { enable_thinking: false }`. Only an explicit HTTP
+400/422 rejection naming that parameter triggers one retry without it;
+the page exposes that rejection and the actual retried request body.
+
+`completion_details` and structured server logs include `finish_reason`,
+`message.content`, `message.reasoning_content`, and the entire `usage` object
+(credentials redacted). A non-empty `content` is always preferred. Only these
+fixed health probes may use non-empty `reasoning_content` as fallback, clearly
+marked by `output_source` and an explanation. Empty content and reasoning are
+still a failure. HTTP success alone is not enough.
+
+Future real scoring must require `message.content` with
+`response_format: { type: "json_object" }`, validate its JSON, and never use this
+health-only reasoning fallback. Scoring routes remain unimplemented here.
+
 Required configuration:
 
 | Test | Secrets | Actual request |

@@ -26,6 +26,45 @@ export const ConnectionCheckStatus = {
   untested: 'untested',
 } as const;
 
+export type ConnectionCheckModelEnv = typeof ConnectionCheckModelEnv[keyof typeof ConnectionCheckModelEnv];
+
+
+export const ConnectionCheckModelEnv = {
+  NEBIUS_TEXT_MODEL: 'NEBIUS_TEXT_MODEL',
+  NEBIUS_VISION_MODEL: 'NEBIUS_VISION_MODEL',
+} as const;
+
+export type CompletionDiagnosticsMessage = {
+  /** @nullable */
+  content: string | null;
+  /** @nullable */
+  reasoning_content: string | null;
+};
+
+/**
+ * @nullable
+ */
+export type CompletionDiagnosticsUsage = { [key: string]: unknown } | null;
+
+export interface CompletionDiagnostics {
+  /** @nullable */
+  finish_reason: string | null;
+  message: CompletionDiagnosticsMessage;
+  /** @nullable */
+  usage: CompletionDiagnosticsUsage;
+}
+
+/**
+ * Reasoning fallback is permitted only for connection diagnostics
+ */
+export type ConnectionCheckOutputSource = typeof ConnectionCheckOutputSource[keyof typeof ConnectionCheckOutputSource];
+
+
+export const ConnectionCheckOutputSource = {
+  content: 'content',
+  reasoning_content: 'reasoning_content',
+} as const;
+
 export interface ConnectionCheck {
   id: ConnectionCheckId;
   label: string;
@@ -42,6 +81,34 @@ export interface ConnectionCheck {
      */
   latency_ms: number | null;
   model_ids?: string[];
+  /** Trimmed non-sensitive model identifier actually sent to Nebius */
+  configured_model?: string;
+  model_env?: ConnectionCheckModelEnv;
+  /**
+     * Exact case-sensitive catalog membership; null until verified
+     * @nullable
+     */
+  model_in_catalog?: boolean | null;
+  model_catalog_error?: string;
+  /**
+     * Upstream provider status
+     * @minimum 100
+     * @maximum 599
+     * @nullable
+     */
+  http_status?: number | null;
+  /** Full upstream error body with credentials and signed URLs redacted */
+  error_response_body?: string;
+  request_endpoint?: string;
+  request_method?: string;
+  /** Non-sensitive diagnostic JSON payload; excludes authorization headers */
+  request_body?: string;
+  completion_details?: CompletionDiagnostics;
+  /** Reasoning fallback is permitted only for connection diagnostics */
+  output_source?: ConnectionCheckOutputSource;
+  thinking_disabled_requested?: boolean;
+  /** Full redacted provider rejection of the optional thinking parameter */
+  thinking_parameter_error?: string;
   output?: string;
   /** Non-sensitive fixed test image used for the vision request */
   image_data_url?: string;
