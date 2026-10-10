@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./_group.css";
 import { Chrome } from "./_shared/Chrome";
-import { ArrowLeft, ChevronDown, CircleHelp, Clock3, Code2, Mic, MicOff, Pause, Play, Radio, RotateCcw, ShieldCheck, Sparkles, Square, Terminal } from "lucide-react";
+import { ArrowLeft, ChevronDown, CircleHelp, Clock3, Code2, Mic, MicOff, Pause, Play, Radio, ShieldCheck, Sparkles, Square, Terminal } from "lucide-react";
 
 const starter = `import { db } from "./db";
 
@@ -24,11 +24,10 @@ export async function ingestWebhook(event: WebhookEvent) {
 export function AuditionRoom() {
   const [speaking, setSpeaking] = useState(false);
   const [phase, setPhase] = useState<"Behavioral" | "Technical">("Technical");
-  const [seconds, setSeconds] = useState(18 * 60 + 42);
+  const [seconds, setSeconds] = useState(4 * 60 + 12);
   const [running, setRunning] = useState(true);
   const [code, setCode] = useState(starter);
   const [language, setLanguage] = useState("TypeScript");
-  const [tested, setTested] = useState(false);
   const [ended, setEnded] = useState(false);
 
   useEffect(() => {
@@ -43,7 +42,7 @@ export function AuditionRoom() {
     <div className="screen-pad room">
       <div className="room-head">
         <div><button className="back-link" onClick={() => setEnded((v) => !v)}><ArrowLeft size={14}/> Your audition</button>
-          <div className="candidate-line"><div className="candidate-avatar">AM</div><div><h1>Alex Morgan <span className="company-tag">Northstar</span></h1><p>Backend Engineer audition <span>·</span> Session 08-241</p></div></div>
+          <div className="candidate-line"><div className="candidate-avatar">AM</div><div><h1>Alex Morgan <span className="company-tag">Northstar</span></h1><p>Backend Engineer audition <span>·</span> 6-minute audition <span>·</span> Session 08-241</p></div></div>
         </div>
         <div className="room-meta">
           <div className="phase-switch"><button className={phase === "Behavioral" ? "selected" : ""} onClick={() => setPhase("Behavioral")}>Behavioral</button><button className={phase === "Technical" ? "selected" : ""} onClick={() => setPhase("Technical")}>Technical</button></div>
@@ -51,7 +50,7 @@ export function AuditionRoom() {
           <button className="icon-btn" aria-label="Pause timer" onClick={() => setRunning((v) => !v)}>{running ? <Pause size={15}/> : <Play size={15}/>}</button>
         </div>
       </div>
-      <div className="room-status"><div><span className="rec-dot"/><b>{ended ? "Session paused" : "Recording"} </b><span className="status-divider">·</span> Encrypted and private</div><div className="secure"><ShieldCheck size={14}/> Candidate can request a human review</div></div>
+      <div className="room-status"><div className="capture-status"><span><span className="rec-dot"/><b>{ended ? "Session paused" : "Recording"}</b></span><span className="screen-share-chip"><span className="share-dot"/>Screen shared: entire screen</span><span>Encrypted and private</span></div><div className="secure"><ShieldCheck size={14}/> Candidate can request a human review</div></div>
 
       {phase === "Behavioral" ? <section className="behavior-card panel">
         <div className="behavior-left">
@@ -84,9 +83,8 @@ export function AuditionRoom() {
         <div className="editor panel">
           <div className="editor-top"><div className="editor-title"><Terminal size={15}/><span>Solution</span><span className="file-name">webhook.ts</span></div><label className="language-select"><select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Select language"><option>TypeScript</option><option>JavaScript</option><option>Python</option></select><ChevronDown size={13}/></label></div>
           <div className="editor-sub"><span>Webhook ingestion · <b>{language}</b></span><span className="edit-hint">Editable workspace</span></div>
-          <div className="code-area"><div className="line-numbers">{lines.map((_, i) => <span key={i}>{i + 1}</span>)}</div><textarea spellCheck={false} aria-label="Code editor" value={code} onChange={(e) => {setCode(e.target.value);setTested(false);}} /></div>
-          <div className="editor-bottom"><div className="editor-actions"><button className="run-btn" onClick={() => setTested(true)}><Play size={13} fill="currentColor"/> Run tests</button><button className="reset-btn" onClick={() => {setCode(starter);setTested(false);}}><RotateCcw size={13}/> Reset</button></div><span className="saved-state"><span/> Changes saved locally</span></div>
-          <div className={`test-results ${tested ? "show" : ""}`}><div className="test-head"><span><Terminal size={13}/> Sample tests</span><span className={tested ? "test-count" : ""}>{tested ? "2 of 4 passing" : "Not run"}</span></div>{tested && <div className="test-list"><div><span className="test-fail">×</span><span>duplicate delivery returns prior result</span><small>Expected one row, found two</small></div><div><span className="test-fail">×</span><span>concurrent retries are serialized</span><small>Unique constraint not handled</small></div><div><span className="test-pass">✓</span><span>new event is persisted</span></div><div><span className="test-pass">✓</span><span>event payload is returned</span></div></div>}</div>
+          <div className="code-area"><div className="line-numbers">{lines.map((_, i) => <span key={i}>{i + 1}</span>)}</div><textarea spellCheck={false} aria-label="Code editor" value={code} onChange={(e) => setCode(e.target.value)} /></div>
+          <div className="editor-bottom"><span className="saved-state"><span/> Changes saved locally</span></div>
         </div>
       </section>}
       <div className="room-footer"><div><Radio size={14}/> <span>Session is private to Alex and the hiring team</span></div><button className="end-session" onClick={() => setEnded((v) => !v)}>{ended ? <Play size={13}/> : <Square size={12} fill="currentColor"/>}{ended ? "Resume session" : "End session"}</button></div>
@@ -119,6 +117,10 @@ export function AuditionRoom() {
       @media(max-width:980px){.workbench{grid-template-columns:minmax(245px,.78fr) minmax(400px,1.3fr)}.voice-card{padding-left:12px;padding-right:12px}.room-meta{gap:5px}.time-block span{display:none}}
       @media(max-width:760px){.room-head{align-items:flex-start;flex-direction:column}.room-meta{width:100%;justify-content:space-between}.workbench{grid-template-columns:1fr}.left-column{display:grid;grid-template-columns:1fr 1.1fr}.voice-card{min-height:280px}.code-area{min-height:300px}.behavior-card{grid-template-columns:1fr}.behavior-left{border-right:0;border-bottom:1px solid var(--line);padding:15px}.behavior-left .orb-wrap{width:150px;height:150px}.behavior-left .voice-orb{width:100px;height:100px}.behavior-prompt{padding:26px 22px}}
       @media(max-width:540px){.candidate-line h1{font-size:16px}.room-status{align-items:flex-start;gap:8px;flex-direction:column}.left-column{grid-template-columns:1fr}.voice-card{min-height:255px}.question-card{min-height:210px}.test-list{grid-template-columns:1fr}.secure{font-size:9px}.time-block{padding:0 3px}.phase-switch button{padding:7px}.behavior-prompt h2{font-size:21px}.prompt-foot{gap:12px;align-items:flex-start;flex-direction:column}}
+      .capture-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.screen-share-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #cfe6db;border-radius:999px;padding:5px 9px;color:#376e55;font-weight:500}.share-dot{width:6px;height:6px;border-radius:50%;background:#22a366;flex-shrink:0}
+      .room .orb-wrap{width:222px;height:222px}.room .voice-orb{width:141px;height:141px}.room .behavior-left .orb-wrap{width:330px;height:330px}.room .behavior-left .voice-orb{width:198px;height:198px}.room .editor-bottom{justify-content:flex-end}
+      @media(max-width:1100px){.room-status{flex-wrap:wrap;gap:8px}}
+      @media(max-width:760px){.room .behavior-left .orb-wrap{width:225px;height:225px}.room .behavior-left .voice-orb{width:150px;height:150px}}
     `}</style>
   </Chrome>;
 }

@@ -14,3 +14,9 @@ The user wants modern enterprise SaaS styling: a light workspace, navy sidebar, 
 **Why:** The user explicitly specified the visual direction.
 
 **How to apply:** Preserve this direction when extending these screens unless the user changes it.
+
+The candidate room represents a six-minute audition.
+
+**Why:** The user explicitly corrected the timer to reflect a six-minute audition.
+
+**How to apply:** Keep candidate-room timing within six minutes rather than reverting to a longer interview duration.
