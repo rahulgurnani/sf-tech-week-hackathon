@@ -15,8 +15,8 @@ The user wants modern enterprise SaaS styling: a light workspace, navy sidebar, 
 
 **How to apply:** Preserve this direction when extending these screens unless the user changes it.
 
-The candidate room represents a six-minute audition.
+The audition is standardized: six minutes total, Behavioral for the first three minutes and Technical for the last three. Candidates cannot pause, select phases, or change the company-set editor language. Finishing early is irreversible.
 
-**Why:** The user explicitly corrected the timer to reflect a six-minute audition.
+**Why:** The user explicitly requested the same questions and time limits for every candidate, with a fixed six-minute format.
 
-**How to apply:** Keep candidate-room timing within six minutes rather than reverting to a longer interview duration.
+**How to apply:** Keep phase switching automatic at 03:00 remaining, require confirmation before finishing early, and keep report duration and evidence timestamps within 00:00–06:00.

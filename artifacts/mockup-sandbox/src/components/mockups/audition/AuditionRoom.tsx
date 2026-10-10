@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import "./_group.css";
 import { Chrome } from "./_shared/Chrome";
-import { ArrowLeft, ChevronDown, CircleHelp, Clock3, Code2, Mic, MicOff, Pause, Play, Radio, ShieldCheck, Sparkles, Square, Terminal } from "lucide-react";
+import { ArrowLeft, CircleHelp, Clock3, Code2, LockKeyhole, Radio, ShieldCheck, Sparkles, Square, Terminal } from "lucide-react";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 const starter = `import { db } from "./db";
 
@@ -22,46 +23,67 @@ export async function ingestWebhook(event: WebhookEvent) {
 }`;
 
 export function AuditionRoom() {
-  const [speaking, setSpeaking] = useState(false);
-  const [phase, setPhase] = useState<"Behavioral" | "Technical">("Technical");
-  const [seconds, setSeconds] = useState(4 * 60 + 12);
-  const [running, setRunning] = useState(true);
+  const [deadline] = useState(() => {
+    const saved = Number(sessionStorage.getItem("audition-demo-deadline"));
+    if (saved > 0) return saved;
+    // The preview opens 1:48 into the standardized six-minute audition.
+    const next = Date.now() + (4 * 60 + 12) * 1000;
+    sessionStorage.setItem("audition-demo-deadline", String(next));
+    return next;
+  });
+  const [seconds, setSeconds] = useState(() => Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
   const [code, setCode] = useState(starter);
-  const [language, setLanguage] = useState("TypeScript");
-  const [ended, setEnded] = useState(false);
+  const language = "TypeScript";
+  const [ended, setEnded] = useState(() => sessionStorage.getItem("audition-demo-finished") === "true");
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  const completed = ended || seconds === 0;
+  const phase = seconds > 3 * 60 ? "Behavioral" : "Technical";
+  const speaking = seconds % 24 >= 16;
 
   useEffect(() => {
-    if (!running || ended) return;
-    const timer = window.setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
+    if (ended) return;
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setSeconds((previous) => Math.min(previous, remaining));
+      if (remaining === 0) {
+        sessionStorage.setItem("audition-demo-finished", "expired");
+        setConfirmFinish(false);
+        window.clearInterval(timer);
+      }
+    }, 250);
     return () => window.clearInterval(timer);
-  }, [running, ended]);
+  }, [deadline, ended]);
+  const finishEarly = () => {
+    sessionStorage.setItem("audition-demo-finished", "true");
+    setEnded(true);
+    setConfirmFinish(false);
+  };
   const time = `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
   const lines = code.split("\n");
 
   return <Chrome active="room" crumb="Alex Morgan">
     <div className="screen-pad room">
       <div className="room-head">
-        <div><button className="back-link" onClick={() => setEnded((v) => !v)}><ArrowLeft size={14}/> Your audition</button>
+        <div><div className="back-link"><ArrowLeft size={14}/> Your audition</div>
           <div className="candidate-line"><div className="candidate-avatar">AM</div><div><h1>Alex Morgan <span className="company-tag">Northstar</span></h1><p>Backend Engineer audition <span>·</span> 6-minute audition <span>·</span> Session 08-241</p></div></div>
         </div>
         <div className="room-meta">
-          <div className="phase-switch"><button className={phase === "Behavioral" ? "selected" : ""} onClick={() => setPhase("Behavioral")}>Behavioral</button><button className={phase === "Technical" ? "selected" : ""} onClick={() => setPhase("Technical")}>Technical</button></div>
-          <div className="time-block"><Clock3 size={15}/><strong>{time}</strong><span>remaining</span></div>
-          <button className="icon-btn" aria-label="Pause timer" onClick={() => setRunning((v) => !v)}>{running ? <Pause size={15}/> : <Play size={15}/>}</button>
+          <div className="phase-switch" aria-label={`Current phase: ${completed ? "Complete" : phase}`}><span className={phase === "Behavioral" ? "selected" : ""}>Behavioral</span><span className={phase === "Technical" ? "selected" : ""}>Technical</span></div>
+          <div className="time-block"><Clock3 size={15}/><strong>{time}</strong><span>{completed ? "finished" : "remaining"}</span></div>
         </div>
       </div>
-      <div className="room-status"><div className="capture-status"><span><span className="rec-dot"/><b>{ended ? "Session paused" : "Recording"}</b></span><span className="screen-share-chip"><span className="share-dot"/>Screen shared: entire screen</span><span>Encrypted and private</span></div><div className="secure"><ShieldCheck size={14}/> Candidate can request a human review</div></div>
+      <div className="room-status"><div className="capture-status"><span>{!completed && <span className="rec-dot"/>}<b>{completed ? "Recording complete" : "Recording"}</b></span>{!completed && <span className="screen-share-chip"><span className="share-dot"/>Screen shared: entire screen</span>}<span>Encrypted and private</span></div><div className="secure"><ShieldCheck size={14}/> Candidate can request a human review</div></div>
+      <div className="standard-note"><LockKeyhole size={13}/> Questions and time limits are the same for every candidate.</div>
 
-      {phase === "Behavioral" ? <section className="behavior-card panel">
+      {completed ? <section className="completion-card panel" role="status"><div className="spotlight"/><h2>{ended ? "Audition finished early" : "Your audition is complete"}</h2><p>{ended ? "You chose to finish before the time limit." : "The six-minute time limit has been reached."} This audition cannot be restarted.</p><p>The hiring team will review your responses.</p><small>Design preview · no live interview submission</small></section> : phase === "Behavioral" ? <section className="behavior-card panel">
         <div className="behavior-left">
           <div className={`orb-wrap ${speaking ? "is-speaking" : "is-listening"}`}><div className="orb-halo"/><div className="voice-orb"><span/><i/><b/></div></div>
           <div className="voice-state"><span className="voice-pulse"/>{speaking ? "Audition is speaking" : "Listening to Alex"}</div>
           <p className="voice-note">{speaking ? "A question is being read aloud." : "Take your time. Your answer is being captured."}</p>
-          <button className="subtle-btn voice-toggle" onClick={() => setSpeaking((v) => !v)}>{speaking ? <Mic size={14}/> : <MicOff size={14}/>} {speaking ? "Switch to listening" : "Preview AI speaking"}</button>
         </div>
         <div className="behavior-prompt"><div className="eyebrow">Behavioral · Ownership</div><h2>Tell me about a time you made a system more reliable.</h2><p>What did you notice, what did you change, and how did you know it worked?</p>
-          <div className="transcript-card"><span className="eyebrow">Live transcript</span><blockquote>“We had duplicate delivery from a partner during a deploy. I traced it to a retry path that treated a timeout as a hard failure. I added an idempotency key at the boundary, then watched duplicate writes in our event logs drop to zero over the next week.”</blockquote><span className="transcript-time">00:06:14 <span>·</span> Alex Morgan</span></div>
-          <div className="prompt-foot"><span><Sparkles size={13}/> Follow-up adapts to your response</span><button onClick={() => setPhase("Technical")}>Continue to technical <ArrowLeft size={13} style={{transform:"rotate(180deg)"}}/></button></div>
+          <div className="transcript-card"><span className="eyebrow">Live transcript</span><blockquote>“We had duplicate delivery from a partner during a deploy. I traced it to a retry path that treated a timeout as a hard failure. I added an idempotency key at the boundary, then watched duplicate writes in our event logs drop to zero over the next week.”</blockquote><span className="transcript-time">01:32 <span>·</span> Alex Morgan</span></div>
+          <div className="prompt-foot"><span><Sparkles size={13}/> Standardized question · Ownership</span><span>Technical begins at 03:00 remaining</span></div>
         </div>
       </section> : <section className="workbench">
         <div className="left-column">
@@ -70,25 +92,36 @@ export function AuditionRoom() {
             <div className={`orb-wrap ${speaking ? "is-speaking" : "is-listening"}`}><div className="orb-halo"/><div className="voice-orb"><span/><i/><b/></div></div>
             <div className="voice-state"><span className="voice-pulse"/>{speaking ? "Audition is speaking" : "Listening to Alex"}</div>
             <p className="voice-note">{speaking ? "Reading the prompt aloud. You can interrupt at any time." : "Alex is working through the technical challenge."}</p>
-            <button className="subtle-btn voice-toggle" onClick={() => setSpeaking((v) => !v)}>{speaking ? <Mic size={14}/> : <MicOff size={14}/>} {speaking ? "Switch to listening" : "Preview AI speaking"}</button>
           </div>
           <div className="question-card panel">
             <div className="eyebrow">Technical challenge <span className="difficulty">· Backend systems</span></div>
             <h3>Idempotent webhook ingestion</h3>
             <p>Design an ingestion function for a webhook provider that may retry deliveries. Persist each event once, even under concurrent requests.</p>
             <div className="requirement"><span className="requirement-icon"><Code2 size={14}/></span><span><b>Consider</b><small>Database constraints, transaction boundaries, and retry behavior</small></span></div>
-            <div className="challenge-footer"><span><Clock3 size={13}/> No trick questions</span><button onClick={() => setPhase("Behavioral")}>Back to behavioral <ArrowLeft size={12}/></button></div>
+            <div className="challenge-footer"><span><Clock3 size={13}/> No trick questions</span><span>Ends at 00:00</span></div>
           </div>
         </div>
         <div className="editor panel">
-          <div className="editor-top"><div className="editor-title"><Terminal size={15}/><span>Solution</span><span className="file-name">webhook.ts</span></div><label className="language-select"><select value={language} onChange={(e) => setLanguage(e.target.value)} aria-label="Select language"><option>TypeScript</option><option>JavaScript</option><option>Python</option></select><ChevronDown size={13}/></label></div>
+          <div className="editor-top"><div className="editor-title"><Terminal size={15}/><span>Solution</span><span className="file-name">webhook.ts</span></div><span className="fixed-language"><LockKeyhole size={12}/>{language} · Set by Northstar</span></div>
           <div className="editor-sub"><span>Webhook ingestion · <b>{language}</b></span><span className="edit-hint">Editable workspace</span></div>
           <div className="code-area"><div className="line-numbers">{lines.map((_, i) => <span key={i}>{i + 1}</span>)}</div><textarea spellCheck={false} aria-label="Code editor" value={code} onChange={(e) => setCode(e.target.value)} /></div>
           <div className="editor-bottom"><span className="saved-state"><span/> Changes saved locally</span></div>
         </div>
       </section>}
-      <div className="room-footer"><div><Radio size={14}/> <span>Session is private to Alex and the hiring team</span></div><button className="end-session" onClick={() => setEnded((v) => !v)}>{ended ? <Play size={13}/> : <Square size={12} fill="currentColor"/>}{ended ? "Resume session" : "End session"}</button></div>
+      <div className="room-footer"><div><Radio size={14}/> <span>Session is private to Alex and the hiring team</span></div>{!completed && <button className="end-session" onClick={() => setConfirmFinish(true)}><Square size={12} fill="currentColor"/>Finish early</button>}</div>
     </div>
+    <AlertDialog open={confirmFinish && !completed} onOpenChange={setConfirmFinish}>
+      <AlertDialogContent style={{fontFamily:"Inter, sans-serif"}}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Finish your audition early?</AlertDialogTitle>
+          <AlertDialogDescription>Your audition will end immediately and cannot be restarted. The time remaining and unanswered questions will not be restored. The timer keeps counting down while this dialog is open.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep going</AlertDialogCancel>
+          <AlertDialogAction onClick={finishEarly} style={{background:"#188e87"}}>Finish early</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     <style>{`
       .room { max-width:1520px; padding-top:23px; }
       .room-head { display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:19px; }
@@ -121,6 +154,7 @@ export function AuditionRoom() {
       .room .orb-wrap{width:222px;height:222px}.room .voice-orb{width:141px;height:141px}.room .behavior-left .orb-wrap{width:330px;height:330px}.room .behavior-left .voice-orb{width:198px;height:198px}.room .editor-bottom{justify-content:flex-end}
       @media(max-width:1100px){.room-status{flex-wrap:wrap;gap:8px}}
       @media(max-width:760px){.room .behavior-left .orb-wrap{width:225px;height:225px}.room .behavior-left .voice-orb{width:150px;height:150px}}
+      .phase-switch>span{padding:7px 10px;border-radius:6px;color:#778797;font-size:10px}.phase-switch>span.selected{background:#fff;box-shadow:0 1px 3px #1932491a;color:#334b60;font-weight:600}.standard-note{display:flex;align-items:center;gap:7px;font-size:10px;color:#708591;margin:-4px 0 16px}.fixed-language{display:flex;align-items:center;gap:6px;font-size:10px;color:#607485}.completion-card{min-height:480px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px}.completion-card h2{font-size:22px;margin:15px 0 8px}.completion-card p{font-size:12px;line-height:1.7;color:#718294;max-width:430px}.completion-card small{font-size:10px;color:#8a9ba7;margin-top:12px}
     `}</style>
   </Chrome>;
 }

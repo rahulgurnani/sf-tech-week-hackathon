@@ -5,23 +5,23 @@ import { ArrowDownToLine, ArrowRight, Check, CheckCheck, ChevronDown, Clock3, Co
 
 type TabName = "Scores" | "Transcript" | "Screen timeline" | "Integrity flags" | "Credential";
 const requirements = [
-  { title:"API design", score:4, time:"18:42", quote:"“I’d return 202 once we’ve durably accepted it. The sender shouldn’t have to wait for downstream processing.”", note:"Separates acceptance from processing and sets a clear API contract." },
-  { title:"Data modeling", score:3, time:"21:08", quote:"“The provider’s event ID is the natural idempotency key. I’d make that unique in the database, not just check it in application code.”", note:"Identifies the correct uniqueness boundary; did not fully develop the migration strategy." },
-  { title:"Reliability", score:4, time:"24:31", quote:"“A read-then-insert can still race. I’d use INSERT … ON CONFLICT and treat the existing row as an accepted retry.”", note:"Names the concurrency race and proposes an atomic, retry-safe write." },
-  { title:"Coding & problem solving", score:3, time:"29:16", quote:"“I’d catch the unique violation and return the existing event result. The transaction should include the event row, not the worker call.”", note:"Strong transaction boundary; implementation stopped short of handling all constraint errors." },
-  { title:"Communication", score:4, time:"25:54", quote:"“Let me say back the failure case: two deliveries can arrive together, so the database has to be the final arbiter.”", note:"Checks assumptions aloud and makes a subtle concurrency issue easy to follow." },
-  { title:"Ownership", score:3, time:"06:14", quote:"“I added an idempotency key at the boundary, then watched duplicate writes in our event logs drop to zero over the next week.”", note:"Connects a past reliability fix to an observable outcome; impact is clear and scoped." },
+  { title:"API design", score:4, time:"03:24", quote:"“I’d return 202 once we’ve durably accepted it. The sender shouldn’t have to wait for downstream processing.”", note:"Separates acceptance from processing and sets a clear API contract." },
+  { title:"Data modeling", score:3, time:"03:52", quote:"“The provider’s event ID is the natural idempotency key. I’d make that unique in the database, not just check it in application code.”", note:"Identifies the correct uniqueness boundary; did not fully develop the migration strategy." },
+  { title:"Reliability", score:4, time:"04:26", quote:"“A read-then-insert can still race. I’d use INSERT … ON CONFLICT and treat the existing row as an accepted retry.”", note:"Names the concurrency race and proposes an atomic, retry-safe write." },
+  { title:"Coding & problem solving", score:3, time:"05:20", quote:"“I’d catch the unique violation and return the existing event result. The transaction should include the event row, not the worker call.”", note:"Strong transaction boundary; implementation stopped short of handling all constraint errors." },
+  { title:"Communication", score:4, time:"04:48", quote:"“Let me say back the failure case: two deliveries can arrive together, so the database has to be the final arbiter.”", note:"Checks assumptions aloud and makes a subtle concurrency issue easy to follow." },
+  { title:"Ownership", score:3, time:"01:32", quote:"“I added an idempotency key at the boundary, then watched duplicate writes in our event logs drop to zero over the next week.”", note:"Connects a past reliability fix to an observable outcome; impact is clear and scoped." },
 ];
 const transcript = [
-  { time:"00:01:12", speaker:"Audition", text:"To start, tell me about a system you improved after noticing it wasn’t reliable enough." },
-  { time:"00:02:06", speaker:"Alex Morgan", text:"We had duplicate delivery from a partner during a deploy. I traced it to a retry path that treated a timeout as a hard failure." },
-  { time:"00:06:14", speaker:"Alex Morgan", text:"I added an idempotency key at the boundary, then watched duplicate writes in our event logs drop to zero over the next week." },
-  { time:"00:17:20", speaker:"Audition", text:"Design an ingestion function for a webhook provider that may retry deliveries, including while another request is still processing." },
-  { time:"00:18:42", speaker:"Alex Morgan", text:"I’d return 202 once we’ve durably accepted it. The sender shouldn’t have to wait for downstream processing." },
-  { time:"00:21:08", speaker:"Alex Morgan", text:"The provider’s event ID is the natural idempotency key. I’d make that unique in the database, not just check it in application code." },
-  { time:"00:24:31", speaker:"Alex Morgan", text:"A read-then-insert can still race. I’d use INSERT … ON CONFLICT and treat the existing row as an accepted retry." },
-  { time:"00:25:54", speaker:"Alex Morgan", text:"Let me say back the failure case: two deliveries can arrive together, so the database has to be the final arbiter." },
-  { time:"00:29:16", speaker:"Alex Morgan", text:"I’d catch the unique violation and return the existing event result. The transaction should include the event row, not the worker call." },
+  { time:"00:08", speaker:"Audition", text:"To start, tell me about a system you improved after noticing it wasn’t reliable enough." },
+  { time:"00:40", speaker:"Alex Morgan", text:"We had duplicate delivery from a partner during a deploy. I traced it to a retry path that treated a timeout as a hard failure." },
+  { time:"01:32", speaker:"Alex Morgan", text:"I added an idempotency key at the boundary, then watched duplicate writes in our event logs drop to zero over the next week." },
+  { time:"03:00", speaker:"Audition", text:"Design an ingestion function for a webhook provider that may retry deliveries, including while another request is still processing." },
+  { time:"03:24", speaker:"Alex Morgan", text:"I’d return 202 once we’ve durably accepted it. The sender shouldn’t have to wait for downstream processing." },
+  { time:"03:52", speaker:"Alex Morgan", text:"The provider’s event ID is the natural idempotency key. I’d make that unique in the database, not just check it in application code." },
+  { time:"04:26", speaker:"Alex Morgan", text:"A read-then-insert can still race. I’d use INSERT … ON CONFLICT and treat the existing row as an accepted retry." },
+  { time:"04:48", speaker:"Alex Morgan", text:"Let me say back the failure case: two deliveries can arrive together, so the database has to be the final arbiter." },
+  { time:"05:20", speaker:"Alex Morgan", text:"I’d catch the unique violation and return the existing event result. The transaction should include the event row, not the worker call." },
 ];
 
 export function AuditionReport() {
@@ -33,6 +33,7 @@ export function AuditionReport() {
     const body = [
       "AUDITION REPORT — Alex Morgan",
       "Backend Engineer · Northstar · Overall 3.5 / 4",
+       "Audition duration: 6 min · Behavioral 00:00–03:00 · Technical 03:00–06:00",
       "",
       ...requirements.flatMap((item) => [
         `${item.title}: ${item.score}/4 — ${scoreLabel(item.score)}`,
@@ -65,7 +66,7 @@ export function AuditionReport() {
       <div className="summary-strip panel">
         <div className="overall-score"><div className="score-ring"><span>3.5</span><small>/4</small></div><div><div className="eyebrow">Overall score</div><b>Strong signal</b><span className="score-context">Across 6 role requirements</span></div></div>
         <div className="summary-divider"/>
-        <div className="summary-metric"><span className="metric-icon"><Clock3 size={15}/></span><div><small>Audition duration</small><b>34 min</b></div></div>
+        <div className="summary-metric"><span className="metric-icon"><Clock3 size={15}/></span><div><small>Audition duration</small><b>6 min</b></div></div>
         <div className="summary-metric"><span className="metric-icon"><Code2 size={15}/></span><div><small>Technical exercise</small><b>Webhook ingestion</b></div></div>
         <div className="summary-review"><ShieldCheck size={15}/><span>Evidence-led review<br/><small>Scores include timestamps and direct quotes</small></span></div>
       </div>
@@ -86,20 +87,20 @@ export function AuditionReport() {
         </>}
         {tab === "Transcript" && <section className="tab-panel transcript-view panel">
           <div className="section-heading"><div><h2>Audition transcript</h2><p>Technical and behavioral responses, with timestamps.</p></div><span className="transcript-badge"><CheckCheck size={13}/> Reviewed for clarity</span></div>
-          <div className="transcript-filter"><button className="filter-active">All conversation</button><button onClick={() => setTab("Scores")}>Scored evidence <span>6</span></button><span>Behavioral <b>00:00–12:40</b></span><span>Technical <b>12:41–34:09</b></span></div>
+          <div className="transcript-filter"><button className="filter-active">All conversation</button><button onClick={() => setTab("Scores")}>Scored evidence <span>6</span></button><span>Behavioral <b>00:00–03:00</b></span><span>Technical <b>03:00–06:00</b></span></div>
           <div className="transcript-list">{transcript.map((line) => <div className={`transcript-row ${line.speaker === "Alex Morgan" ? "candidate-line" : ""}`} key={line.time}><time>{line.time}</time><div className="speaker-avatar">{line.speaker === "Alex Morgan" ? "AM" : <Sparkles size={13}/>}</div><div><b>{line.speaker}</b><p>{line.text}</p></div>{requirements.some((r) => r.time === line.time) && <span className="quote-marker">Scored evidence</span>}</div>)}</div>
           <div className="transcript-note"><ShieldCheck size={14}/> Transcript is provided for review context. Automated transcription may not capture every nuance.</div>
         </section>}
-        {tab === "Screen timeline" && <section className="tab-panel panel"><div className="section-heading"><div><h2>Screen timeline</h2><p>A simple view of the session flow and candidate activity.</p></div><span className="timeline-duration"><Clock3 size={14}/> 34 min total</span></div>
-          <div className="timeline"><div className="timeline-entry"><span className="timeline-time">00:00</span><span className="timeline-node done"/><div><b>Welcome & setup</b><p>Candidate reviewed the session format and privacy note.</p></div><span className="timeline-tag">2 min</span></div>
-            <div className="timeline-entry"><span className="timeline-time">02:06</span><span className="timeline-node teal"/><div><b>Behavioral · Ownership</b><p>Discussed diagnosing duplicate webhook deliveries and measuring the fix.</p><button className="timeline-link" onClick={() => setTab("Transcript")}>View transcript <ArrowRight size={12}/></button></div><span className="timeline-tag">10 min</span></div>
-            <div className="timeline-entry"><span className="timeline-time">12:41</span><span className="timeline-node teal"/><div><b>Technical · Idempotent webhook ingestion</b><p>Worked through database uniqueness, concurrent retries, and transaction scope.</p><button className="timeline-link" onClick={() => setTab("Transcript")}>View transcript <ArrowRight size={12}/></button></div><span className="timeline-tag">21 min</span></div>
-            <div className="timeline-entry"><span className="timeline-time">34:09</span><span className="timeline-node done"/><div><b>Session complete</b><p>Candidate submitted the TypeScript workspace.</p></div><span className="timeline-tag">1 min</span></div>
+        {tab === "Screen timeline" && <section className="tab-panel panel"><div className="section-heading"><div><h2>Screen timeline</h2><p>A simple view of the session flow and candidate activity.</p></div><span className="timeline-duration"><Clock3 size={14}/> 6 min total</span></div>
+          <div className="timeline"><div className="timeline-entry"><span className="timeline-time">00:00</span><span className="timeline-node done"/><div><b>Audition begins</b><p>Six-minute timer started after the candidate reviewed setup and privacy information.</p></div><span className="timeline-tag">Start</span></div>
+            <div className="timeline-entry"><span className="timeline-time">00:00</span><span className="timeline-node teal"/><div><b>Behavioral · Ownership</b><p>Discussed diagnosing duplicate webhook deliveries and measuring the fix.</p><button className="timeline-link" onClick={() => setTab("Transcript")}>View transcript <ArrowRight size={12}/></button></div><span className="timeline-tag">3 min</span></div>
+            <div className="timeline-entry"><span className="timeline-time">03:00</span><span className="timeline-node teal"/><div><b>Technical · Idempotent webhook ingestion</b><p>Worked through database uniqueness, concurrent retries, and transaction scope.</p><button className="timeline-link" onClick={() => setTab("Transcript")}>View transcript <ArrowRight size={12}/></button></div><span className="timeline-tag">3 min</span></div>
+            <div className="timeline-entry"><span className="timeline-time">06:00</span><span className="timeline-node done"/><div><b>Session complete</b><p>Time limit reached; the TypeScript workspace was finalized automatically.</p></div><span className="timeline-tag">Complete</span></div>
           </div>
         </section>}
         {tab === "Integrity flags" && <section className="tab-panel panel integrity-view"><div className="section-heading"><div><h2>Integrity & session signals</h2><p>Signals are informational and should not be treated as findings.</p></div><span className="caution-pill"><ShieldAlert size={14}/> Review with care</span></div>
           <div className="integrity-banner"><ShieldAlert size={16}/><div><b>No conclusive integrity concerns identified</b><p>Automated session signals can be incomplete or misleading. They are not a measure of candidate honesty or ability.</p></div></div>
-          <div className="signal-row"><div className="signal-icon"><Clock3 size={16}/></div><div><b>One brief focus change detected</b><p>At 23:18, the browser focus changed for approximately 8 seconds during the technical exercise. This can happen for many ordinary reasons, including accessibility tools or checking a note.</p><button onClick={() => setTab("Screen timeline")}>See session timeline <ArrowRight size={12}/></button></div><span className="signal-tag">Context only</span></div>
+          <div className="signal-row"><div className="signal-icon"><Clock3 size={16}/></div><div><b>One brief focus change detected</b><p>At 04:10, the browser focus changed for approximately 8 seconds during the technical exercise. This can happen for many ordinary reasons, including accessibility tools or checking a note.</p><button onClick={() => setTab("Screen timeline")}>See session timeline <ArrowRight size={12}/></button></div><span className="signal-tag">Context only</span></div>
           <div className="integrity-guidance"><b>Recommended approach</b><span>Ask Alex about their approach to the challenge in a human conversation if you need more context. Do not draw conclusions from this signal alone.</span></div>
         </section>}
         {tab === "Credential" && <section className="tab-panel panel credential-view"><div className="section-heading"><div><h2>Credential</h2><p>Verified skill credential for Alex Morgan.</p></div><span className="credential-status"><FileBadge2 size={14}/> Not issued</span></div>
