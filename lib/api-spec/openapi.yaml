@@ -1,36 +1,566 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: Audition foundation contract. All domain endpoints currently return 501; successful responses describe future implementations only.
 servers:
   - url: /api
-    description: Base API path
 tags:
-  - name: health
-    description: Health operations
+  - { name: health, description: Existing health endpoint }
+  - { name: auditions, description: Frozen audition definitions and invitations }
+  - { name: sessions, description: Server-timed candidate evidence }
+  - { name: evaluations, description: Requirement-level assessment }
+  - { name: credentials, description: Signed session credentials }
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+  /auditions:
+    get:
+      operationId: listAuditions
+      tags: [auditions]
+      responses:
+        "200":
+          description: Future audition list; never includes invite tokens
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Audition" } }
+        "501": { $ref: "#/components/responses/NotImplemented" }
+    post:
+      operationId: createAudition
+      tags: [auditions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuditionInput" }
+      responses:
+        "201":
+          description: Future frozen audition and creation-only invite token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditionInvitation" }
+        "501": { $ref: "#/components/responses/NotImplemented" }
+  /auditions/{auditionId}:
+    parameters:
+      - { $ref: "#/components/parameters/AuditionId" }
+    get:
+      operationId: getAudition
+      tags: [auditions]
+      responses: { "200": { $ref: "#/components/responses/AuditionResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /auditions/{auditionId}/candidates:
+    parameters:
+      - { $ref: "#/components/parameters/AuditionId" }
+    get:
+      operationId: listCandidates
+      tags: [auditions]
+      responses:
+        "200":
+          description: Future candidates belonging to this audition
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Candidate" } }
+        "501": { $ref: "#/components/responses/NotImplemented" }
+    post:
+      operationId: inviteCandidate
+      tags: [auditions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CandidateInput" }
+      responses: { "201": { $ref: "#/components/responses/CandidateResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /candidates/{candidateId}:
+    parameters:
+      - { name: candidateId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getCandidate
+      tags: [auditions]
+      responses: { "200": { $ref: "#/components/responses/CandidateResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /invites/resolve:
+    post:
+      operationId: resolveInvite
+      tags: [auditions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InviteInput" }
+      responses: { "200": { $ref: "#/components/responses/AuditionResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions:
+    post:
+      operationId: startSession
+      tags: [sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionInput" }
+      responses: { "201": { $ref: "#/components/responses/SessionResult" }, "200": { $ref: "#/components/responses/SessionResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions/{sessionId}:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+    get:
+      operationId: getSession
+      tags: [sessions]
+      responses: { "200": { $ref: "#/components/responses/SessionResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions/{sessionId}/transcript:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+    get:
+      operationId: getTranscript
+      tags: [sessions]
+      responses:
+        "200":
+          description: Future transcript in sequence order
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/TranscriptEntry" } }
+        "501": { $ref: "#/components/responses/NotImplemented" }
+    post:
+      operationId: appendTranscript
+      tags: [sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TranscriptBatch" }
+      responses: { "204": { description: Future batch accepted }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions/{sessionId}/editor-snapshots:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+    get:
+      operationId: getEditorSnapshots
+      tags: [sessions]
+      responses:
+        "200":
+          description: Future snapshots in timestamp order
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/EditorSnapshot" } }
+        "501": { $ref: "#/components/responses/NotImplemented" }
+    post:
+      operationId: appendEditorSnapshots
+      tags: [sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EditorSnapshotBatch" }
+      responses: { "204": { description: Future batch accepted }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions/{sessionId}/screenshots:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+    get:
+      operationId: getScreenshots
+      tags: [sessions]
+      responses:
+        "200":
+          description: Future screenshot metadata; not public file URLs
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Screenshot" } }
+        "501": { $ref: "#/components/responses/NotImplemented" }
+    post:
+      operationId: appendScreenshots
+      tags: [sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScreenshotBatch" }
+      responses: { "204": { description: Future metadata accepted }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions/{sessionId}/integrity-events:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+    get:
+      operationId: getIntegrityEvents
+      tags: [sessions]
+      responses:
+        "200":
+          description: Future informational integrity events
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/IntegrityEvent" } }
+        "501": { $ref: "#/components/responses/NotImplemented" }
+    post:
+      operationId: appendIntegrityEvents
+      tags: [sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IntegrityEventBatch" }
+      responses: { "204": { description: Future batch accepted }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions/{sessionId}/submit:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+    post:
+      operationId: submitSession
+      tags: [sessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionSubmission" }
+      responses: { "200": { $ref: "#/components/responses/SessionResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions/{sessionId}/evaluation:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+    get:
+      operationId: getEvaluation
+      tags: [evaluations]
+      responses: { "200": { $ref: "#/components/responses/EvaluationResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+    post:
+      operationId: recordEvaluation
+      tags: [evaluations]
+      description: Future internal worker-only endpoint, not candidate or manager supplied scores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EvaluationInput" }
+      responses: { "201": { $ref: "#/components/responses/EvaluationResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /sessions/{sessionId}/credential:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+    get:
+      operationId: getCredential
+      tags: [credentials]
+      responses: { "200": { $ref: "#/components/responses/CredentialResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+    post:
+      operationId: issueCredential
+      tags: [credentials]
+      description: Future consent-aware server-side signing; no client-supplied token or hash
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CredentialConsent" }
+      responses: { "201": { $ref: "#/components/responses/CredentialResult" }, "501": { $ref: "#/components/responses/NotImplemented" } }
+  /credentials/verify:
+    post:
+      operationId: verifyCredential
+      tags: [credentials]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CredentialVerificationInput" }
+      responses:
+        "200":
+          description: Future signature and session-hash verification; no candidate PII
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CredentialVerification" }
+        "501": { $ref: "#/components/responses/NotImplemented" }
 components:
+  parameters:
+    AuditionId: { name: auditionId, in: path, required: true, schema: { type: string, format: uuid } }
+    SessionId: { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    NotImplemented:
+      description: Current response for every Audition domain endpoint; no side effects
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    AuditionResult:
+      description: Future audition definition without invite token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Audition" }
+    CandidateResult:
+      description: Future candidate
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Candidate" }
+    SessionResult:
+      description: Future session; server owns timing and state
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Session" }
+    EvaluationResult:
+      description: Future evaluation
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Evaluation" }
+    CredentialResult:
+      description: Future credential
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Credential" }
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+    ApiError:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string }
+        message: { type: string }
+    TimestampMs:
+      type: integer
+      minimum: 0
+      maximum: 360000
+      description: Milliseconds elapsed since server_start_time, not an absolute clock time
+    QuestionInput:
+      type: object
+      required: [position, requirement, prompt, phase, time_limit_seconds]
+      properties:
+        position: { type: integer, minimum: 1 }
+        requirement: { type: string, minLength: 1 }
+        prompt: { type: string, minLength: 1 }
+        phase: { type: string, enum: [Behavioral, Technical] }
+        time_limit_seconds: { type: integer, minimum: 1, maximum: 180 }
+    FrozenQuestion:
+      allOf:
+        - { $ref: "#/components/schemas/QuestionInput" }
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uuid }
+    AuditionInput:
+      type: object
+      additionalProperties: false
+      required: [role, job_description, editor_language, frozen_questions]
+      properties:
+        role: { type: string, minLength: 1 }
+        job_description: { type: string, minLength: 1 }
+        editor_language: { type: string, minLength: 1 }
+        frozen_questions:
+          type: array
+          minItems: 2
+          maxItems: 360
+          items: { $ref: "#/components/schemas/QuestionInput" }
+          description: Ordered unique positions; each phase sums to 180 seconds; fixed after creation
+    Audition:
+      type: object
+      required: [id, role, job_description, editor_language, duration_seconds, frozen_questions, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        role: { type: string }
+        job_description: { type: string }
+        editor_language: { type: string }
+        duration_seconds: { type: integer, enum: [360] }
+        frozen_questions: { type: array, items: { $ref: "#/components/schemas/FrozenQuestion" } }
+        created_at: { type: string, format: date-time }
+    AuditionInvitation:
+      type: object
+      required: [audition, invite_token]
+      properties:
+        audition: { $ref: "#/components/schemas/Audition" }
+        invite_token: { type: string, minLength: 32, description: Sensitive opaque server-generated invitation secret; never logged }
+    CandidateInput:
+      type: object
+      additionalProperties: false
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+    Candidate:
+      type: object
+      required: [id, audition_id, name, email, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        audition_id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [Invited, In progress, Submitted, Analyzed] }
+        created_at: { type: string, format: date-time }
+    InviteInput:
+      type: object
+      additionalProperties: false
+      required: [invite_token]
+      properties:
+        invite_token: { type: string, minLength: 32 }
+    SessionInput:
+      type: object
+      additionalProperties: false
+      required: [candidate_id, invite_token]
+      properties:
+        candidate_id: { type: string, format: uuid }
+        invite_token: { type: string, minLength: 32 }
+    Session:
+      type: object
+      required: [id, candidate_id, server_start_time, deadline_at, status, submitted_at, finish_reason]
+      properties:
+        id: { type: string, format: uuid }
+        candidate_id: { type: string, format: uuid }
+        server_start_time: { type: string, format: date-time }
+        deadline_at: { type: string, format: date-time, description: Derived as server_start_time plus 360 seconds }
+        status: { type: string, enum: [In progress, Submitted] }
+        submitted_at: { type: [string, "null"], format: date-time }
+        finish_reason: { type: [string, "null"], enum: [time_limit, finished_early, null] }
+    SessionSubmission:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, enum: [time_limit, finished_early] }
+    TranscriptInput:
+      type: object
+      required: [sequence, timestamp_ms, speaker, text]
+      properties:
+        sequence: { type: integer, minimum: 1 }
+        timestamp_ms: { $ref: "#/components/schemas/TimestampMs" }
+        speaker: { type: string, enum: [candidate, interviewer] }
+        text: { type: string }
+    TranscriptEntry:
+      allOf:
+        - { $ref: "#/components/schemas/TranscriptInput" }
+        - type: object
+          required: [id, session_id]
+          properties:
+            id: { type: string, format: uuid }
+            session_id: { type: string, format: uuid }
+    TranscriptBatch:
+      type: object
+      additionalProperties: false
+      required: [entries]
+      properties:
+        entries: { type: array, minItems: 1, maxItems: 100, items: { $ref: "#/components/schemas/TranscriptInput" } }
+    EditorSnapshotInput:
+      type: object
+      required: [timestamp_ms, content]
+      properties:
+        timestamp_ms: { type: integer, minimum: 0, maximum: 360000, multipleOf: 10000 }
+        content: { type: string, description: Empty source code is allowed; language comes from audition }
+    EditorSnapshot:
+      allOf:
+        - { $ref: "#/components/schemas/EditorSnapshotInput" }
+        - type: object
+          required: [id, session_id]
+          properties:
+            id: { type: string, format: uuid }
+            session_id: { type: string, format: uuid }
+    EditorSnapshotBatch:
+      type: object
+      additionalProperties: false
+      required: [snapshots]
+      properties:
+        snapshots: { type: array, minItems: 1, maxItems: 37, items: { $ref: "#/components/schemas/EditorSnapshotInput" } }
+    ScreenshotInput:
+      type: object
+      required: [timestamp_ms, file_path, mime_type]
+      properties:
+        timestamp_ms: { $ref: "#/components/schemas/TimestampMs" }
+        file_path: { type: string, minLength: 1, description: Private durable storage reference, not base64 or a public URL }
+        mime_type: { type: string, enum: [image/png, image/jpeg, image/webp] }
+    Screenshot:
+      allOf:
+        - { $ref: "#/components/schemas/ScreenshotInput" }
+        - type: object
+          required: [id, session_id]
+          properties:
+            id: { type: string, format: uuid }
+            session_id: { type: string, format: uuid }
+    ScreenshotBatch:
+      type: object
+      additionalProperties: false
+      required: [screenshots]
+      properties:
+        screenshots: { type: array, minItems: 1, maxItems: 100, items: { $ref: "#/components/schemas/ScreenshotInput" } }
+    IntegrityDetails:
+      type: object
+      additionalProperties: false
+      properties:
+        duration_ms: { type: integer, minimum: 0, maximum: 360000 }
+        character_count: { type: integer, minimum: 0 }
+    IntegrityEventInput:
+      type: object
+      required: [sequence, timestamp_ms, type, details]
+      properties:
+        sequence: { type: integer, minimum: 1 }
+        timestamp_ms: { $ref: "#/components/schemas/TimestampMs" }
+        type: { type: string, enum: [page_left, large_paste, screen_share_stopped] }
+        details: { $ref: "#/components/schemas/IntegrityDetails" }
+    IntegrityEvent:
+      allOf:
+        - { $ref: "#/components/schemas/IntegrityEventInput" }
+        - type: object
+          required: [id, session_id]
+          properties:
+            id: { type: string, format: uuid }
+            session_id: { type: string, format: uuid }
+    IntegrityEventBatch:
+      type: object
+      additionalProperties: false
+      required: [events]
+      properties:
+        events: { type: array, minItems: 1, maxItems: 100, items: { $ref: "#/components/schemas/IntegrityEventInput" } }
+    EvaluationQuote:
+      type: object
+      additionalProperties: false
+      required: [timestamp_ms, quote]
+      properties:
+        timestamp_ms: { $ref: "#/components/schemas/TimestampMs" }
+        quote: { type: string, minLength: 1 }
+    RequirementEvaluation:
+      type: object
+      additionalProperties: false
+      required: [requirement, level, rationale, quotes]
+      properties:
+        requirement: { type: string, minLength: 1 }
+        level:
+          oneOf:
+            - { type: integer, minimum: 1, maximum: 4 }
+            - { type: string, enum: [not_covered] }
+        rationale: { type: string, minLength: 1 }
+        quotes: { type: array, items: { $ref: "#/components/schemas/EvaluationQuote" } }
+    EvaluationInput:
+      type: object
+      required: [requirements, overall_score, spoken_summary_text, spoken_summary_audio_file]
+      properties:
+        requirements: { type: array, minItems: 1, items: { $ref: "#/components/schemas/RequirementEvaluation" } }
+        overall_score: { type: [number, "null"], minimum: 1, maximum: 4, description: Mean of covered requirement levels; null when none covered }
+        spoken_summary_text: { type: string, minLength: 1 }
+        spoken_summary_audio_file: { type: [string, "null"], minLength: 1, description: Private audio storage reference; null until audio exists }
+    Evaluation:
+      allOf:
+        - { $ref: "#/components/schemas/EvaluationInput" }
+        - type: object
+          required: [id, session_id, created_at]
+          properties:
+            id: { type: string, format: uuid }
+            session_id: { type: string, format: uuid }
+            created_at: { type: string, format: date-time }
+    CredentialConsent:
+      type: object
+      additionalProperties: false
+      required: [consent]
+      properties:
+        consent: { type: boolean, enum: [true] }
+    Credential:
+      type: object
+      required: [id, session_id, evaluation_id, signed_token, session_data_hash, issued_at]
+      properties:
+        id: { type: string, format: uuid }
+        session_id: { type: string, format: uuid }
+        evaluation_id: { type: string, format: uuid }
+        signed_token: { type: string, minLength: 1 }
+        session_data_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        issued_at: { type: string, format: date-time }
+    CredentialVerificationInput:
+      type: object
+      additionalProperties: false
+      required: [signed_token]
+      properties:
+        signed_token: { type: string, minLength: 1 }
+    CredentialVerification:
+      type: object
+      required: [valid]
+      properties:
+        valid: { type: boolean }
+        credential_id: { type: string, format: uuid }
+        session_data_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        issued_at: { type: string, format: date-time }
