@@ -1,1 +1,2 @@
 - [Audition product direction](audition-product.md) — User-stated positioning and visual direction for the candidate and hiring-manager experiences.
+- [Paid integration diagnostics](integration-diagnostics.md) — Keep credential-backed probes unavailable in production until verified admin authorization exists.

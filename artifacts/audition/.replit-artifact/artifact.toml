@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Audition"
+description = "Audition technical-hiring workspace, starting with a server-side integration diagnostics page at /admin/health."
+version = "1.0.0"
+id = "artifacts/audition"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19175
+
+[services.development]
+run = "pnpm --filter @workspace/audition run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/audition", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/audition/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19175"
+BASE_PATH = "/"

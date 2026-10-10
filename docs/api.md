@@ -2,11 +2,12 @@
 
 ## Scope and implementation status
 
-This is a foundation only. Database tables exist; all 23 Audition API operations
+The audition workflow remains a foundation only. Database tables exist; all 23 Audition domain API operations
 are empty route stubs returning **HTTP 501**, regardless of input. They do not
 authenticate, validate incoming data, create invitations, start sessions, record
 evidence, run analysis, sign credentials, or access files. Existing design
-prototypes are not connected. Only the existing `GET /api/healthz` is implemented.
+prototypes are not connected. The existing `GET /api/healthz` and the integration
+diagnostics endpoints described below are implemented.
 
 `lib/api-spec/openapi.yaml` is the machine-readable source of truth. The success
 responses in that specification are the **future contract**, not functionality
@@ -214,3 +215,46 @@ uniqueness. Cross-row phase sums, frozen-definition immutability, progression,
 deadline finalization, evidence capture, overall mean, quote provenance,
 authorization and cryptography remain handler/service responsibilities.
 They are intentionally **not features in this foundation**.
+
+## Implemented development diagnostics
+
+Page: `/admin/health` in the Audition web artifact. This does not implement the
+audition workflow or change its tables.
+
+- `GET /api/admin/health`: returns configuration availability and last results;
+  never makes provider requests. No key values or signed capabilities returned.
+- `POST /api/admin/health/{checkId}`: runs a fixed test, returns a
+  `ConnectionCheck` with `ok`, `error`, or `missing` status. Valid IDs:
+  `nebius_models`, `nebius_text`, `nebius_vision`, `elevenlabs_tts`,
+  `elevenlabs_agent`. Ready but untested checks have status `untested`.
+- `GET /api/admin/health/tts-audio`: serves the temporary MP3 already generated
+  by the speech test, or 404 when missing/expired. It does not generate speech.
+
+All diagnostics are **blocked with 403 outside NODE_ENV=development** until
+verified admin authorization is added. Same-origin browser POSTs only; this is
+not a substitute for authentication. Calls have 25-second timeouts, bounded
+response sizes, per-test request coalescing, and a 60-second result cache to
+limit accidental credit consumption. Tests run only on explicit user action.
+No API key or upstream bearer header reaches the browser. Provider errors are
+returned with HTTP codes and credential values redacted.
+
+Required configuration:
+
+| Test | Secrets | Actual request |
+|---|---|---|
+| Nebius catalog | `NEBIUS_API_KEY` | GET `https://api.tokenfactory.nebius.com/v1/models`, returns all IDs |
+| Nebius text | key + `NEBIUS_TEXT_MODEL` | POST `/v1/chat/completions`, user message `Say OK` |
+| Nebius vision | key + `NEBIUS_VISION_MODEL` | POST `/v1/chat/completions`, synthetic red square/blue circle PNG as a base64 data URL |
+| ElevenLabs speech | `ELEVENLABS_API_KEY` | POST `/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb`, default George voice, `eleven_multilingual_v2`, short fixed sentence |
+| ElevenLabs agent | key + `ELEVENLABS_AGENT_ID` | GET `/v1/convai/conversation/get-signed-url?agent_id=…` on the server |
+
+Missing/blank configuration returns `missing` with secret **names**, not failure
+or an upstream request. Add secrets through the workspace secrets tooling and
+restart the API server to load them.
+
+Speech audio is held in process memory for five minutes, not saved as a durable
+asset or DB binary; it disappears on restart. Browser controls play it on demand
+to comply with autoplay policies. Vision success means a non-empty provider
+response, not a guarantee of visual accuracy. Agent success means a valid
+ElevenLabs `wss:` signed URL was acquired; the diagnostics page receives only
+`signed_url_available`, not the signed URL itself.

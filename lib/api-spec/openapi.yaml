@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Api
   version: 0.2.0
-  description: Audition foundation contract. All domain endpoints currently return 501; successful responses describe future implementations only.
+  description: Audition foundation and development-only integration diagnostics. Audition domain endpoints remain 501 stubs.
 servers:
   - url: /api
 tags:
@@ -12,6 +12,49 @@ tags:
   - { name: evaluations, description: Requirement-level assessment }
   - { name: credentials, description: Signed session credentials }
 paths:
+  /admin/health:
+    get:
+      operationId: getAdminHealth
+      tags: [health]
+      summary: Read configuration and most recent diagnostic results without provider calls
+      responses:
+        "200":
+          description: Current diagnostic state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminHealth" }
+        "403": { $ref: "#/components/responses/DiagnosticsDisabled" }
+  /admin/health/{checkId}:
+    post:
+      operationId: runAdminHealthCheck
+      tags: [health]
+      summary: Run one fixed server-side provider test (results reused for 60 seconds)
+      parameters:
+        - name: checkId
+          in: path
+          required: true
+          schema: { type: string, enum: [nebius_models, nebius_text, nebius_vision, elevenlabs_tts, elevenlabs_agent] }
+      responses:
+        "200":
+          description: Provider success, error or missing configuration (provider failures are represented in the result)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectionCheck" }
+        "400": { $ref: "#/components/responses/DiagnosticsDisabled" }
+        "403": { $ref: "#/components/responses/DiagnosticsDisabled" }
+  /admin/health/tts-audio:
+    get:
+      operationId: getAdminHealthAudio
+      tags: [health]
+      summary: Play temporary diagnostic audio; never generates audio on GET
+      responses:
+        "200":
+          description: In-memory MP3 sample retained for five minutes
+          content:
+            audio/mpeg:
+              schema: { type: string, format: binary }
+        "403": { $ref: "#/components/responses/DiagnosticsDisabled" }
+        "404": { $ref: "#/components/responses/DiagnosticsDisabled" }
   /healthz:
     get:
       operationId: healthCheck
@@ -266,6 +309,11 @@ components:
     AuditionId: { name: auditionId, in: path, required: true, schema: { type: string, format: uuid } }
     SessionId: { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
   responses:
+    DiagnosticsDisabled:
+      description: Invalid test, unavailable audio, or diagnostics disabled outside development
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
     NotImplemented:
       description: Current response for every Audition domain endpoint; no side effects
       content:
@@ -297,6 +345,29 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Credential" }
   schemas:
+    AdminHealth:
+      type: object
+      required: [development_only, checks]
+      properties:
+        development_only: { type: boolean }
+        checks: { type: array, items: { $ref: "#/components/schemas/ConnectionCheck" } }
+    ConnectionCheck:
+      type: object
+      required: [id, label, status, message, error, missing_secrets, checked_at, latency_ms]
+      properties:
+        id: { type: string, enum: [nebius_models, nebius_text, nebius_vision, elevenlabs_tts, elevenlabs_agent] }
+        label: { type: string }
+        status: { type: string, enum: [ok, error, missing, untested] }
+        message: { type: string }
+        error: { type: [string, "null"] }
+        missing_secrets: { type: array, items: { type: string } }
+        checked_at: { type: [string, "null"], format: date-time }
+        latency_ms: { type: [integer, "null"], minimum: 0 }
+        model_ids: { type: array, items: { type: string } }
+        output: { type: string }
+        image_data_url: { type: string, description: Non-sensitive fixed test image used for the vision request }
+        audio_url: { type: string, description: Same-origin temporary audio path; no API key }
+        signed_url_available: { type: boolean, description: Signed URL validated server-side; token deliberately not returned to diagnostics browser }
     HealthStatus:
       type: object
       required: [status]
