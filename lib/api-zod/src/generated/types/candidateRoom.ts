@@ -10,6 +10,15 @@ import type { CandidateRoomAudition } from './candidateRoomAudition';
 import type { RoomSession } from './roomSession';
 
 export interface CandidateRoom {
+  editor_content: string;
+  /** @minimum 0 */
+  screenshot_count: number;
+  /**
+     * @minimum 0
+     * @maximum 360000
+     * @nullable
+     */
+  last_snapshot_ms: number | null;
   audition: CandidateRoomAudition;
   candidate: Candidate;
   session: RoomSession | null;

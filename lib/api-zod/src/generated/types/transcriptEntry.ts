@@ -5,9 +5,13 @@
  * Audition foundation and development-only integration diagnostics. Audition domain endpoints remain 501 stubs.
  * OpenAPI spec version: 0.2.0
  */
+import type { TranscriptEntryOrigin } from './transcriptEntryOrigin';
 import type { TranscriptInput } from './transcriptInput';
 
 export type TranscriptEntry = TranscriptInput & {
   id: string;
   session_id: string;
+  /** App controls and updates are never candidate scoring evidence */
+  is_app_message: boolean;
+  origin: TranscriptEntryOrigin;
 };

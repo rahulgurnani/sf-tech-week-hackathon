@@ -3,6 +3,27 @@ name: Paid integration diagnostics
 description: Security and scope decision for provider-health checks before admin identity exists
 ---
 
+Candidate voice capabilities are separate from admin diagnostic probes. An active,
+candidate-scoped invite may receive a temporary SDK signed URL, but never the provider
+API key. The diagnostic production restriction must not be extended indiscriminately
+to the actual invited-candidate interview.
+
+**Why:** The user explicitly requested server-issued signed URLs for the browser SDK.
+Invitation capabilities allow the requested candidate flow without introducing a
+separate account-registration requirement, while constraining access to one session.
+
+**How to apply:** Keep authorization and irreversible session timing on the server.
+Treat health-page probes and live candidate conversations as different access scopes.
+
+SDK lifecycle requests are not necessarily confirmation that a connection has opened
+or closed. Use actual connection metadata for persistence and actual SDK mode for UI.
+
+**Why:** Provider SDK lifecycle interfaces change; awaiting a synchronous lifecycle
+request can appear successful before a conversation exists.
+
+**How to apply:** Check the installed SDK's types rather than copying older tutorial
+assumptions about lifecycle return values.
+
 Do not enable credential-backed diagnostics in production simply to make the
 admin-health page publishable. Require verified server-side admin authorization
 before exposing paid probes or agent capabilities.

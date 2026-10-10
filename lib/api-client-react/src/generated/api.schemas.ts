@@ -124,6 +124,15 @@ export type RoomSession = Session & ({
 });
 
 export interface CandidateRoom {
+  editor_content: string;
+  /** @minimum 0 */
+  screenshot_count: number;
+  /**
+     * @minimum 0
+     * @maximum 360000
+     * @nullable
+     */
+  last_snapshot_ms: number | null;
   audition: CandidateRoomAudition;
   candidate: Candidate;
   session: RoomSession | null;
@@ -160,6 +169,8 @@ export interface ConversationBinding {
      * @pattern ^conv_[A-Za-z0-9_-]+$
      */
   conversation_id: string;
+  /** SDK observed conversation end; server can fetch its transcript before the audition deadline */
+  ended?: boolean;
 }
 
 export interface RoomSnapshotInput {
@@ -414,6 +425,11 @@ export const SessionSubmissionReason = {
 
 export interface SessionSubmission {
   reason: SessionSubmissionReason;
+  /**
+     * Final editor state captured at submission
+     * @maxLength 60000
+     */
+  editor_content?: string;
 }
 
 export type TranscriptInputSpeaker = typeof TranscriptInputSpeaker[keyof typeof TranscriptInputSpeaker];
@@ -432,9 +448,20 @@ export interface TranscriptInput {
   text: string;
 }
 
+export type TranscriptEntryOrigin = typeof TranscriptEntryOrigin[keyof typeof TranscriptEntryOrigin];
+
+
+export const TranscriptEntryOrigin = {
+  app: 'app',
+  elevenlabs: 'elevenlabs',
+} as const;
+
 export type TranscriptEntry = TranscriptInput & {
   id: string;
   session_id: string;
+  /** App controls and updates are never candidate scoring evidence */
+  is_app_message: boolean;
+  origin: TranscriptEntryOrigin;
 };
 
 export interface TranscriptBatch {

@@ -9,4 +9,9 @@ import type { SessionSubmissionReason } from './sessionSubmissionReason';
 
 export interface SessionSubmission {
   reason: SessionSubmissionReason;
+  /**
+     * Final editor state captured at submission
+     * @maxLength 60000
+     */
+  editor_content?: string;
 }

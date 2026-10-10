@@ -11,6 +11,11 @@ import * as zod from 'zod';
 /**
  * Candidate-scoped opaque invite token in Authorization Bearer header; never a provider API key.
  */
+export const getCandidateRoomResponseScreenshotCountMin = 0;
+
+export const getCandidateRoomResponseLastSnapshotMsMin = 0;
+export const getCandidateRoomResponseLastSnapshotMsMax = 360000;
+
 
 
 
@@ -19,6 +24,9 @@ export const getCandidateRoomResponseAuditionOneFrozenQuestionsItemOneTimeLimitS
 
 
 export const GetCandidateRoomResponse = zod.object({
+  "editor_content": zod.string(),
+  "screenshot_count": zod.number().int().min(getCandidateRoomResponseScreenshotCountMin),
+  "last_snapshot_ms": zod.number().int().min(getCandidateRoomResponseLastSnapshotMsMin).max(getCandidateRoomResponseLastSnapshotMsMax).nullable(),
   "audition": zod.object({
   "id": zod.string().uuid(),
   "role": zod.string(),
@@ -132,7 +140,8 @@ export const bindCandidateConversationBodyConversationIdRegExp = new RegExp('^co
 
 
 export const BindCandidateConversationBody = zod.object({
-  "conversation_id": zod.string().max(bindCandidateConversationBodyConversationIdMax).regex(bindCandidateConversationBodyConversationIdRegExp)
+  "conversation_id": zod.string().max(bindCandidateConversationBodyConversationIdMax).regex(bindCandidateConversationBodyConversationIdRegExp),
+  "ended": zod.boolean().optional().describe('SDK observed conversation end; server can fetch its transcript before the audition deadline')
 })
 
 export const BindCandidateConversationResponse = zod.object({
@@ -251,8 +260,13 @@ export const SubmitCandidateRoomParams = zod.object({
   "sessionId": zod.coerce.string().uuid()
 })
 
+export const submitCandidateRoomBodyEditorContentMax = 60000;
+
+
+
 export const SubmitCandidateRoomBody = zod.object({
-  "reason": zod.enum(['time_limit', 'finished_early'])
+  "reason": zod.enum(['time_limit', 'finished_early']),
+  "editor_content": zod.string().max(submitCandidateRoomBodyEditorContentMax).optional().describe('Final editor state captured at submission')
 })
 
 export const SubmitCandidateRoomResponse = zod.object({
@@ -634,7 +648,9 @@ export const GetTranscriptResponseItem = zod.object({
   "text": zod.string()
 }).and(zod.object({
   "id": zod.string().uuid(),
-  "session_id": zod.string().uuid()
+  "session_id": zod.string().uuid(),
+  "is_app_message": zod.boolean().describe('App controls and updates are never candidate scoring evidence'),
+  "origin": zod.enum(['app', 'elevenlabs'])
 }))
 export const GetTranscriptResponse = zod.array(GetTranscriptResponseItem)
 
@@ -815,8 +831,13 @@ export const SubmitSessionParams = zod.object({
   "sessionId": zod.coerce.string().uuid()
 })
 
+export const submitSessionBodyEditorContentMax = 60000;
+
+
+
 export const SubmitSessionBody = zod.object({
-  "reason": zod.enum(['time_limit', 'finished_early'])
+  "reason": zod.enum(['time_limit', 'finished_early']),
+  "editor_content": zod.string().max(submitSessionBodyEditorContentMax).optional().describe('Final editor state captured at submission')
 })
 
 export const SubmitSessionResponse = zod.object({

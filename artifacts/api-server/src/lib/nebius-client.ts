@@ -20,7 +20,7 @@ export function createNebiusClient(apiKey: string, fetchImpl = fetch) {
         signal: AbortSignal.timeout(25_000), redirect: "error",
       });
       if (!response.ok) throw new Error(`Nebius HTTP ${response.status}`);
-      const data = await response.json();
+      const data = await response.json() as { choices?: { message?: { content?: unknown } }[] };
       const content = data.choices?.[0]?.message?.content;
       if (typeof content !== "string" || !content.trim()) throw new Error("Nebius returned no answer content.");
       return jsonObject ? JSON.parse(content) : content;

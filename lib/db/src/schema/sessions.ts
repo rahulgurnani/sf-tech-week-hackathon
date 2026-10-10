@@ -12,6 +12,8 @@ export const sessionsTable = pgTable("sessions", {
   finishReason: text("finish_reason", { enum: ["time_limit", "finished_early"] }),
   status: sessionStatus("status").notNull().default("In progress"),
   conversationId: text("conversation_id").unique(),
+  voiceIssuedAt: timestamp("voice_issued_at", { withTimezone: true }),
+  finalEditorContent: text("final_editor_content"),
   conversationStartOffsetMs: integer("conversation_start_offset_ms"),
   transcriptStatus: text("transcript_status", { enum: ["not_started", "pending", "ready", "error"] }).notNull().default("not_started"),
   transcriptError: text("transcript_error"),

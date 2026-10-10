@@ -61,6 +61,7 @@
 .ca-primary { background:var(--ca-teal);color:#fff;box-shadow:0 2px 4px rgba(22,141,134,.13); }
 .ca-primary:hover:not(:disabled) { background:var(--ca-teal-dark);transform:translateY(-1px); }
 .ca-primary:disabled { opacity:.48;cursor:not-allowed; }
+.ca-spinner { display:inline-block;width:13px;height:13px;border:1.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:ca-orbit .8s linear infinite;vertical-align:middle; }
 .ca-secondary { border:1px solid #dce5e9;background:#fff;color:#566a7b; }
 .ca-secondary:hover:not(:disabled) { background:#f7fafb; }
 .ca-danger { border:1px solid #ecd9d5;background:#fff;color:#a66f62; }

@@ -83,5 +83,6 @@ export * from './sessionSubmissionReason';
 export * from './timestampMs';
 export * from './transcriptBatch';
 export * from './transcriptEntry';
+export * from './transcriptEntryOrigin';
 export * from './transcriptInput';
 export * from './transcriptInputSpeaker';

@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import { ConversationProvider } from "@elevenlabs/react";
 import {
-  Activity, AlertCircle, ArrowRight, Check, Clock3, Code2, LockKeyhole,
+  Activity, AlertCircle, ArrowRight, Clock, Code2, LockKeyhole,
   Mic2, Monitor, Radio, RotateCw, ShieldCheck, Sparkles, Square, Terminal,
 } from "lucide-react";
 import { useCandidateAudition } from "@/hooks/use-candidate-audition";
@@ -11,7 +11,7 @@ import "./candidate-audition.css";
 
 function InviteRoute() {
   const { token = "" } = useParams<{ token: string }>();
-  return <ConversationProvider><CandidateAudition token={token} /></ConversationProvider>;
+  return <ConversationProvider key={token}><CandidateAudition token={token} /></ConversationProvider>;
 }
 
 function CandidateAudition({ token }: { token: string }) {
@@ -26,15 +26,24 @@ function CandidateAudition({ token }: { token: string }) {
   const [screenConsent, setScreenConsent] = useState(false);
   const [micConsent, setMicConsent] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  useEffect(() => {
+    const existingMeta = document.querySelector<HTMLMetaElement>('meta[name="referrer"]');
+    const previousContent = existingMeta?.content;
+    const referrerMeta = existingMeta ?? document.createElement("meta");
+    referrerMeta.name = "referrer";
+    referrerMeta.content = "no-referrer";
+    if (!existingMeta) document.head.appendChild(referrerMeta);
+    return () => {
+      if (existingMeta && previousContent !== undefined) existingMeta.content = previousContent;
+      else referrerMeta.remove();
+    };
+  }, []);
   const audition = room?.audition;
   const candidate = room?.candidate;
-  const technicalQuestion = useMemo(
-    () => audition?.frozen_questions?.find((question) => question.phase === "Technical"),
-    [audition?.frozen_questions],
-  );
-  const codeLines = code.split("\n").length;
+  const technicalQuestion = audition?.frozen_questions?.find((question) => question.phase === "Technical");
   const time = `${Math.floor(Math.max(remainingSeconds, 0) / 60).toString().padStart(2, "0")}:${(Math.max(remainingSeconds, 0) % 60).toString().padStart(2, "0")}`;
   const isWorking = stage === "starting" || stage === "submitting";
+  const beforeStart = stage === "ready" || stage === "starting";
   const canStart = screenConsent && micConsent && candidateName.trim().length > 0 && candidateEmail.trim().length > 0 && !isWorking;
 
   const handleStart = async () => {
@@ -47,10 +56,6 @@ function CandidateAudition({ token }: { token: string }) {
   const handleRetrySubmission = async () => {
     try { await retrySubmission(); } catch { /* hook exposes the actionable error */ }
   };
-  const displayTime = (stamp: number | null) => stamp
-    ? new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(stamp)
-    : null;
-
   return (
     <div className="candidate-audition">
       <div className="ca-shell">
@@ -75,22 +80,22 @@ function CandidateAudition({ token }: { token: string }) {
                 <p>{error}</p>
                 <button className="ca-secondary" onClick={() => void reload()}><RotateCw size={14} /> Try again</button>
               </section>
-            ) : !room ? <LoadingRoom /> : (
+            ) : !room || !audition ? <LoadingRoom /> : (
               <>
                 {error && <div className="ca-notice error" role="alert"><AlertCircle size={16} /><span><strong>There’s an issue with this session.</strong> {error}</span></div>}
                 {!!notices.length && <div className="ca-notices" role="status" aria-live="polite">{notices.map((notice, index) => <div className="ca-notice" key={`${notice}-${index}`}><AlertCircle size={15} /><span>{notice}</span></div>)}</div>}
                 <div className="ca-page-head">
                   <div>
-                    <div className="ca-overline">{stage === "ready" ? "A fair, focused conversation" : stage === "submitted" ? "Audition submitted" : "Candidate room"}</div>
+                    <div className="ca-overline">{beforeStart ? "A fair, focused conversation" : stage === "submitted" ? "Audition submitted" : "Candidate room"}</div>
                     <h1>{candidateName || candidate?.name || "Your audition"} <span className="ca-company-pill">{audition.company}</span></h1>
                     <p>{audition.role} <span aria-hidden="true">·</span> Six-minute live voice audition</p>
                   </div>
                   {(stage === "active" || stage === "starting" || stage === "submitting") && session && (
-                    <div className="ca-timer" aria-label={`${time} remaining`}><Clock3 size={16} /><strong>{time}</strong><span>remaining</span></div>
+                    <div className="ca-timer" aria-label={`${time} remaining`}><Clock size={16} /><strong>{time}</strong><span>remaining</span></div>
                   )}
                 </div>
 
-                {stage === "ready" && (
+                {beforeStart && (
                   <ReadyStage
                     company={audition.company}
                     role={audition.role}
@@ -110,7 +115,7 @@ function CandidateAudition({ token }: { token: string }) {
                   />
                 )}
 
-                {(stage === "active" || stage === "starting" || stage === "submitting") && (
+                {(stage === "active" || stage === "submitting") && (
                   <ActiveStage
                     company={audition.company}
                     language={audition.editor_language}
@@ -128,6 +133,8 @@ function CandidateAudition({ token }: { token: string }) {
                     screenshotsSaved={screenshotsSaved}
                     liveTranscript={liveTranscript}
                     running={isWorking}
+                    retryAvailable={stage === "submitting" && Boolean(error)}
+                    onRetrySubmission={handleRetrySubmission}
                     canFinish={stage === "active"}
                     onFinish={() => setConfirmFinish(true)}
                     onRetry={reload}
@@ -199,17 +206,17 @@ function ReadyStage(props: ReadyStageProps) {
           <div className="ca-field"><label htmlFor="candidate-name">Your name</label><input id="candidate-name" autoComplete="name" value={props.candidateName} onChange={(event) => props.setCandidateName(event.target.value)} /></div>
           <div className="ca-field"><label htmlFor="candidate-email">Email address</label><input id="candidate-email" type="email" autoComplete="email" value={props.candidateEmail} onChange={(event) => props.setCandidateEmail(event.target.value)} /></div>
         </div>
-        <label className="ca-check"><input type="checkbox" checked={props.screenConsent} onChange={(event) => props.setScreenConsent(event.target.checked)} /><span>I understand the interview requires sharing my entire screen. Private technical screenshots are captured every 10 seconds for the hiring team’s review.</span></label>
+        <label className="ca-check"><input type="checkbox" checked={props.screenConsent} onChange={(event) => props.setScreenConsent(event.target.checked)} /><span>I consent to sharing my entire monitor (screen only, not a window or browser tab). Private technical screenshots are captured every 10 seconds for the hiring team’s review.</span></label>
         <label className="ca-check"><input type="checkbox" checked={props.micConsent} onChange={(event) => props.setMicConsent(event.target.checked)} /><span>I consent to microphone access for the live voice interview and understand that my spoken responses may be transcribed.</span></label>
         <div className="ca-ready-actions">
-          <button className="ca-primary" disabled={!props.canStart} onClick={props.onStart}>{props.starting ? <><span className="ca-spinner" aria-hidden="true" /> Connecting…</> : <>Check permissions &amp; begin <ArrowRight size={14} /></>}</button>
-          <span className="ca-meta-label">6 minutes · cannot pause</span>
+          <button className="ca-primary" disabled={!props.canStart} onClick={props.onStart}>{props.starting ? <><span className="ca-spinner" /> Checking permissions…</> : <>Check permissions &amp; begin <ArrowRight size={14} /></>}</button>
+          <span className="ca-meta-label">{props.starting ? "The timer has not started" : "6 minutes · cannot pause"}</span>
         </div>
-        <div className="ca-browser-note"><Monitor size={16} /><span><strong>For the smoothest setup, open this invite in a separate desktop Chrome tab.</strong> You’ll need to allow screen sharing and microphone access when your browser asks.</span></div>
+        <div className="ca-browser-note"><Monitor size={16} /><span><strong>For the smoothest setup, open this invite in a separate desktop Chrome tab.</strong> After you begin, Chrome will ask for microphone access and screen sharing. Select the entire monitor; a browser tab or window does not meet the screen-only requirement.</span></div>
       </section>
       <aside className="ca-panel ca-setup-aside">
         <h3>Your audition details</h3>
-        <div className="ca-detail-row"><div className="ca-detail-icon"><Clock3 size={15} /></div><div><b>Six minutes, one continuous session</b><span>The timer starts when the session begins and continues if you leave this page.</span></div></div>
+        <div className="ca-detail-row"><div className="ca-detail-icon"><Clock size={15} /></div><div><b>Six minutes, one continuous session</b><span>The timer starts when the session begins and continues if you leave this page.</span></div></div>
         <div className="ca-detail-row"><div className="ca-detail-icon"><Mic2 size={15} /></div><div><b>Voice conversation</b><span>Answer naturally. You can speak at your own pace while the interviewer listens.</span></div></div>
         <div className="ca-detail-row"><div className="ca-detail-icon"><Code2 size={15} /></div><div><b>Technical workspace · {props.language}</b><span>{props.jobDescription || `A coding exercise prepared for your ${props.role} interview.`}</span></div></div>
         <div className="ca-timeline"><span>Conversation</span><span className="ca-timeline-bar"><i /><i /></span><span>Code</span></div>
@@ -236,12 +243,15 @@ type ActiveStageProps = {
   screenshotsSaved: number;
   liveTranscript: TranscriptItem[];
   running: boolean;
+  retryAvailable: boolean;
+  onRetrySubmission: () => void;
   canFinish: boolean;
   onFinish: () => void;
   onRetry: () => void;
 };
 
 function ActiveStage(props: ActiveStageProps) {
+  const codeLines = props.code.split("\n").length;
   const voiceLabel: Record<ActiveStageProps["voiceState"], string> = {
     speaking: "Interviewer is speaking",
     listening: "Listening to you",
@@ -251,18 +261,19 @@ function ActiveStage(props: ActiveStageProps) {
   const voiceDetail: Record<ActiveStageProps["voiceState"], string> = {
     speaking: "A question is being read aloud. Take a moment, then answer in your own words.",
     listening: "Your voice connection is active. Take your time; your answer is being captured.",
-    connecting: "Restoring the live voice connection. The audition timer continues.",
+    connecting: "Connecting to the live voice interviewer. The audition timer continues.",
     disconnected: "The voice connection has ended. The session remains in progress and cannot be restarted.",
   };
   const saved = props.lastSavedAt ? new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" }).format(props.lastSavedAt) : null;
   return <>
     <div className="ca-active-top" role="status">
-      <div className="ca-capture-left"><span className="ca-record-dot" /><b>Audition in progress</b>{props.screenShared ? <span className="ca-screen-chip">Entire screen shared</span> : <span>Screen sharing stopped</span>}</div>
+      <div className="ca-capture-left">{props.voiceState !== "disconnected" && props.voiceState !== "connecting" && <span className="ca-record-dot" aria-hidden="true" />}<b>{props.voiceState === "disconnected" ? "Recording inactive · voice disconnected" : props.voiceState === "connecting" ? "Connecting to voice" : "Recording"}</b>{props.screenShared ? <span className="ca-screen-chip">Screen shared: entire screen</span> : <span>Screen sharing stopped</span>}</div>
       <div className="ca-capture-right"><span className="ca-secure"><ShieldCheck size={14} /> Private to you and {props.company}</span><span>{props.screenshotsSaved} private screenshots saved</span></div>
     </div>
-    {!props.screenShared && <div className="ca-notice error" role="alert"><AlertCircle size={16} /><span><strong>Screen sharing stopped.</strong> The technical workspace may no longer be visible to the hiring team. Use your browser’s share controls to restore sharing if available; the timer cannot pause or restart.</span><button className="ca-secondary" onClick={props.onRetry}>Check session</button></div>}
+    {!props.screenShared && <div className="ca-notice error" role="alert"><AlertCircle size={16} /><span><strong>Screen sharing stopped.</strong> Screenshots can no longer be captured. The interruption has been recorded; the timer cannot pause or restart.</span><button className="ca-secondary" onClick={props.onRetry}>Check session</button></div>}
     {props.voiceState === "disconnected" && <div className="ca-notice warning" role="alert"><AlertCircle size={16} /><span><strong>Voice disconnected.</strong> The audition timer is still running. This active session cannot be restarted; continue in the workspace or finish early.</span></div>}
     {props.running && <div className="ca-notice" role="status"><RotateCw size={15} /><span>{props.time} remains. Your session is being finalized; please keep this page open.</span></div>}
+    {props.retryAvailable && <div className="ca-notice error" role="alert"><AlertCircle size={16} /><span>The server has not confirmed submission. Your clock cannot restart.</span><button className="ca-secondary" onClick={props.onRetrySubmission}>Retry submission</button></div>}
     <div className="ca-session-meta">
       <div className="ca-phase-pills" aria-label={`Display-only current phase: ${props.phase}`}><span className={props.phase === "Behavioral" ? "selected" : ""}>Behavioral</span><span className={props.phase === "Technical" ? "selected" : ""}>Technical</span></div>
       <span className="ca-meta-label">Display only · fixed interview sequence</span>
@@ -284,14 +295,14 @@ function ActiveStage(props: ActiveStageProps) {
           <div className="ca-overline">Technical challenge · Question {props.technicalQuestion.position}</div>
           <h3>{props.technicalQuestion.prompt}</h3>
           <div className="ca-requirement"><span className="ca-requirement-icon"><Code2 size={14} /></span><span><b>Requirement</b><small>{props.technicalQuestion.requirement}</small></span></div>
-          <div className="ca-timeline"><span><Clock3 size={13} /> {Math.floor(props.technicalQuestion.time_limit_seconds / 60)}:{String(props.technicalQuestion.time_limit_seconds % 60).padStart(2, "0")} allotted</span><span>Ends with audition</span></div>
+        <div className="ca-timeline"><span><Clock size={13} /> {Math.floor(props.technicalQuestion.time_limit_seconds / 60)}:{String(props.technicalQuestion.time_limit_seconds % 60).padStart(2, "0")} allotted</span><span>Ends with audition</span></div>
         </section>}
         {props.phase === "Behavioral" && <section className="ca-panel ca-question"><div className="ca-overline">Conversation</div><h3>Listen, then respond in your own words.</h3><p>There’s no need to rush. Speak clearly and share the context that helps explain your thinking.</p></section>}
       </div>
       <section className="ca-panel ca-editor" aria-label="Code editor">
         <div className="ca-editor-top"><div className="ca-editor-title"><Terminal size={15} /><span>Solution</span><span className="ca-file-name">solution</span></div><span className="ca-fixed-language"><LockKeyhole size={12} />{props.language} · Set by {props.company}</span></div>
         <div className="ca-editor-sub"><span>{props.role} workspace · <b>{props.language}</b></span><span>Editable workspace</span></div>
-        <div className="ca-code-frame"><div className="ca-lines" aria-hidden="true">{Array.from({ length: codeLines }, (_, index) => <span key={index}>{index + 1}</span>)}</div><textarea aria-label="Code editor" spellCheck={false} value={props.code} onChange={(event) => props.setCode(event.target.value)} onKeyDown={() => props.onEditorKeyDown()} onPaste={(event) => { const pasted = event.clipboardData.getData("text"); if (pasted.length > 50) props.onEditorPaste(pasted); }} /></div>
+        <div className="ca-code-frame"><div className="ca-lines" aria-hidden="true">{Array.from({ length: codeLines }, (_, index) => <span key={index}>{index + 1}</span>)}</div><textarea aria-label="Code editor" readOnly={props.running} spellCheck={false} value={props.code} onChange={(event) => props.setCode(event.target.value)} onKeyDown={() => props.onEditorKeyDown()} onPaste={(event) => { const pasted = event.clipboardData.getData("text"); if (pasted.length > 50) props.onEditorPaste(pasted); }} /></div>
         <div className="ca-editor-foot"><span className="ca-save-state"><span className="ca-save-dot" />{saved ? `Saved at ${saved}` : "Waiting for first save"}</span><span className="ca-workspace-private"><LockKeyhole size={12} />Private workspace · {props.screenshotsSaved} screenshots</span></div>
       </section>
     </section>
@@ -317,7 +328,7 @@ function SubmittedStage({ session, retrySubmission, submitting }: { session: Can
     <p>{session?.finish_reason === "finished_early" ? "You chose to finish before the time limit." : session?.finish_reason === "time_limit" ? "The six-minute time limit was reached." : "Your responses have been submitted."}</p>
     <div className={`ca-complete-state ${transcriptError ? "error" : ""}`}><span className={transcriptStatus === "pending" ? "ca-spinner" : ""} aria-hidden="true" />{transcriptCopy}</div>
     {transcriptError && <p className="ca-meta-label">Your submission remains saved. The transcript service reported an issue.</p>}
-    <button className="ca-secondary" style={{ marginTop: 16 }} disabled={submitting} onClick={retrySubmission}><RotateCw size={14} /> {submitting ? "Retrying…" : "Retry submission"}</button>
+    {session?.status !== "Submitted" && <button className="ca-secondary" style={{ marginTop: 16 }} disabled={submitting} onClick={retrySubmission}><RotateCw size={14} /> {submitting ? "Retrying…" : "Retry submission"}</button>}
   </section>;
 }
 

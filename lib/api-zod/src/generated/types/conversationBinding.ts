@@ -12,4 +12,6 @@ export interface ConversationBinding {
      * @pattern ^conv_[A-Za-z0-9_-]+$
      */
   conversation_id: string;
+  /** SDK observed conversation end; server can fetch its transcript before the audition deadline */
+  ended?: boolean;
 }

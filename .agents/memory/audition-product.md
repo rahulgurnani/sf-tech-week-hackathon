@@ -20,3 +20,9 @@ The audition is standardized: six minutes total, Behavioral for the first three 
 **Why:** The user explicitly requested the same questions and time limits for every candidate, with a fixed six-minute format.
 
 **How to apply:** Keep phase switching automatic at 03:00 remaining, require confirmation before finishing early, and keep report duration and evidence timestamps within 00:00–06:00.
+
+Candidates must share their entire monitor before the audition starts. Window or tab sharing is insufficient. SDK time controls, integrity notifications and other app messages are not candidate answers and must be excluded from scoring.
+
+**Why:** The user explicitly required monitor-only admission and exclusion of every app message from evaluation.
+
+**How to apply:** Preserve explicit screen/microphone consent, private evidence storage, and candidate-only scoring provenance when implementing later analysis and report features.

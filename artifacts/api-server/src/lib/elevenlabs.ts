@@ -1,5 +1,6 @@
 export function redactProviderError(text: string): string {
-  for (const key of ["ELEVENLABS_API_KEY", "NEBIUS_API_KEY"]) {
+  for (const key of ["ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID", "NEBIUS_API_KEY",
+    "SESSION_SECRET", "DEFAULT_OBJECT_STORAGE_BUCKET_ID", "PRIVATE_OBJECT_DIR", "PUBLIC_OBJECT_SEARCH_PATHS"]) {
     if (process.env[key]) text = text.split(process.env[key]!).join("[redacted]");
   }
   return text.replace(/wss?:\/\/[^\s"<>]+/gi, "[signed URL redacted]").slice(0, 1000);

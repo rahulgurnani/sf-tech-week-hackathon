@@ -2,16 +2,17 @@
 
 ## Scope and implementation status
 
-The audition workflow remains a foundation only. Database tables exist; all 23 Audition domain API operations
+The original general-purpose API remains a foundation: all 23 Audition domain operations
 are empty route stubs returning **HTTP 501**, regardless of input. They do not
 authenticate, validate incoming data, create invitations, start sessions, record
 evidence, run analysis, sign credentials, or access files. Existing design
-prototypes are not connected. The existing `GET /api/healthz` and the integration
-diagnostics endpoints described below are implemented.
+prototypes remain separate. The **candidate-only room routes** listed below, `GET /api/healthz`,
+and integration diagnostics are implemented. Evaluations, credentials and manager workflows
+remain outside this build.
 
 `lib/api-spec/openapi.yaml` is the machine-readable source of truth. The success
-responses in that specification are the **future contract**, not functionality
-available today. The current stub response is:
+responses for the original general-purpose operations are the **future contract**;
+candidate-only success responses are live. The unchanged foundation stub response is:
 
 ```json
 {
@@ -19,6 +20,77 @@ available today. The current stub response is:
   "message": "This endpoint is a contract stub. No feature behavior is implemented."
 }
 ```
+
+## Live candidate room
+
+Every candidate route requires `Authorization: Bearer <candidate invite token>`.
+Invites are random 256-bit, candidate-scoped capabilities, separate from the original
+audition-level token. They authorize only that candidate's single session. Responses
+are `Cache-Control: no-store`; tokens are not logged or sent to analytics. Candidates
+do not need to create an account. Provider API keys never reach the browser.
+
+| Method | `/api` path | Behavior |
+| --- | --- | --- |
+| GET | `/candidate/room` | Frozen audition including company, candidate, existing session and latest/final editor content |
+| POST | `/candidate/start` | `{screen_surface:"monitor", candidate_name, candidate_email}`; atomic immutable server start; retries reuse the same session |
+| GET | `/candidate/session/{sessionId}` | Server clock, deadline, submission and transcript-import status |
+| POST | `/candidate/session/{sessionId}/voice` | One server-issued ElevenLabs signed WebSocket URL and frozen dynamic variables |
+| POST | `/candidate/session/{sessionId}/conversation` | `{conversation_id, ended?}`; binds one SDK conversation; `ended:true` schedules server transcript retrieval |
+| POST | `/candidate/session/{sessionId}/snapshots` | `{timestamp_ms, content}`; immutable, idempotent ten-second editor slots |
+| POST | `/candidate/session/{sessionId}/screenshots/{timestampMs}` | Binary `image/jpeg`, ≤1 MiB; technical ten-second slots only; private App Storage file, metadata in PostgreSQL |
+| POST | `/candidate/session/{sessionId}/integrity` | `{event_id, timestamp_ms, type, character_count?}`; deduplicated, server-sequenced events |
+| POST | `/candidate/session/{sessionId}/commands` | `{command_id, kind}`; server-defined app controls, excluded from scoring |
+| POST | `/candidate/session/{sessionId}/submit` | `{reason:"time_limit"\|"finished_early", editor_content?}`; irreversible, idempotent submission |
+
+Screen and microphone consent precede capture. The actual selected video track must
+report `displaySurface === "monitor"`; tab/window selection, denied permission, or an
+unverifiable surface must not start a session. The browser checks the real track;
+the server validates the matching input enum. Browser evidence is not cryptographic
+proof of integrity.
+
+At elapsed 3:00 the display-only phase changes to Technical and the SDK receives
+`sendUserMessage("Start technical part")`; at 5:30 it receives `"Wrap up"`. At 6:00
+the browser stops voice/capture and submits. A persistent-state maintenance worker
+also closes abandoned sessions, storing the exact deadline as `submitted_at` even
+if its next sweep is later. There are no pause, restart, phase-selection or deadline
+editing endpoints. Final editor content is saved separately so finishing between
+ten-second slots does not lose recent changes.
+
+SDK dynamic variables are `candidate_name`, `company`, `role`, numbered
+`behavioral_questions`, and `coding_task`. An additional `audition_session_id`
+variable and SDK `userId` bind the conversation to its session. The server verifies
+agent and session binding before importing the ElevenLabs transcript. Provider
+timestamps are aligned to the session start; speech beyond effective submission
+is excluded. Delayed processing is retried with persisted attempt state. Import
+status is `not_started`, `pending`, `ready`, or `error`, with redacted errors.
+
+App controls have kinds `initial_context`, `technical_start`, `wrap_up`, `time_check`,
+`page_left`, and `screen_share_stopped`. Their transcript entries retain
+`is_app_message:true` and `origin:"app"`; matching provider copies are also marked.
+Provider user entries with `source_medium:"text"` and contextual-update entries are
+also excluded: this room accepts candidate answers only through voice, never chat.
+**Future scoring and quoted candidate evidence must filter `is_app_message = false`.**
+SDK VAD/input volume detects a candidate turn longer than 75 seconds and sends
+`"Time check: politely cut in and move on."`. Every editor keystroke invokes
+`sendUserActivity()`. Page leave and stopped screen share invoke
+`sendContextualUpdate()` immediately and are not candidate answers.
+
+Integrity types include `page_left`, `window_blur`, `large_paste` (>50 characters,
+count required), and `screen_share_stopped`. These are observations, not automatic
+proof of misconduct. Capture timestamps must remain inside 0–360000 ms and before
+effective submission. A 30-second receipt grace admits in-flight, pre-end evidence;
+future and stale captures are rejected. Missing frames are never reconstructed.
+
+The shared Nebius client supplies `max_tokens:1024` and
+`chat_template_kwargs:{enable_thinking:false}` to text and vision requests.
+Future scoring requires nonempty `message.content` and
+`response_format:{type:"json_object"}`; reasoning fallback stays diagnostics-only.
+
+Development seed: `pnpm --filter @workspace/api-server run seed:room` reuses one
+Google Software Engineer audition with two 90-second behavioral questions, one
+180-second coding task and company-fixed TypeScript. `--test` creates a separate
+candidate invite for verification without consuming the demo invitation. Seeding
+does not run automatically in production.
 
 Base path: `/api`. JSON keys use `snake_case`; IDs are UUIDs. Absolute times are
 UTC RFC 3339 strings. Evidence `timestamp_ms` values are integer millisecond

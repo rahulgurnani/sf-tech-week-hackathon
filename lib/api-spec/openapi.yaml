@@ -465,8 +465,11 @@ components:
   schemas:
     CandidateRoom:
       type: object
-      required: [audition, candidate, session]
+      required: [audition, candidate, session, editor_content, screenshot_count, last_snapshot_ms]
       properties:
+        editor_content: { type: string }
+        screenshot_count: { type: integer, minimum: 0 }
+        last_snapshot_ms: { type: [integer, "null"], minimum: 0, maximum: 360000 }
         audition:
           allOf:
             - { $ref: "#/components/schemas/Audition" }
@@ -511,6 +514,7 @@ components:
       required: [conversation_id]
       properties:
         conversation_id: { type: string, pattern: "^conv_[A-Za-z0-9_-]+$", maxLength: 150 }
+        ended: { type: boolean, description: SDK observed conversation end; server can fetch its transcript before the audition deadline }
     RoomSnapshotInput:
       type: object
       additionalProperties: false
@@ -705,6 +709,7 @@ components:
       required: [reason]
       properties:
         reason: { type: string, enum: [time_limit, finished_early] }
+        editor_content: { type: string, maxLength: 60000, description: Final editor state captured at submission, never overwrites a ten-second snapshot }
     TranscriptInput:
       type: object
       required: [sequence, timestamp_ms, speaker, text]
@@ -717,10 +722,12 @@ components:
       allOf:
         - { $ref: "#/components/schemas/TranscriptInput" }
         - type: object
-          required: [id, session_id]
+          required: [id, session_id, is_app_message, origin]
           properties:
             id: { type: string, format: uuid }
             session_id: { type: string, format: uuid }
+            is_app_message: { type: boolean, description: App controls and updates are never candidate scoring evidence }
+            origin: { type: string, enum: [app, elevenlabs] }
     TranscriptBatch:
       type: object
       additionalProperties: false
