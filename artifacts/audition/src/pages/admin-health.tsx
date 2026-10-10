@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
+import AuditionLogo from '@/components/audition-logo';
 import {
   getGetAdminHealthQueryKey,
   useGetAdminHealth,
@@ -256,8 +257,7 @@ export default function AdminHealthPage() {
       <div className="diagnostics-shell">
         <aside className="diag-sidebar" aria-label="Workspace">
           <div className="diag-brand">
-            <div className="brand-emblem" aria-hidden="true" />
-            <div><div className="brand-name">audition</div><div className="brand-caption">Fair skill signals</div></div>
+            <AuditionLogo />
           </div>
           <div className="side-section-label">Workspace</div>
           <div className="side-nav-item active" aria-current="page"><Activity size={15} strokeWidth={1.8} /><span>Integration diagnostics</span></div>

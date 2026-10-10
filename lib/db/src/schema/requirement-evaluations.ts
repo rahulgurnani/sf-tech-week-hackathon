@@ -9,6 +9,7 @@ export const requirementEvaluationsTable = pgTable("requirement_evaluations", {
   requirement: text("requirement").notNull(),
   level: integer("level"),
   notCovered: boolean("not_covered").notNull().default(false),
+  needsReview: boolean("needs_review").notNull().default(false),
   rationale: text("rationale").notNull(),
 }, (t) => [
   unique("evaluation_requirement_unique").on(t.evaluationId, t.requirement),

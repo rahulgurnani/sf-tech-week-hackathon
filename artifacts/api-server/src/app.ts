@@ -14,7 +14,7 @@ app.use(
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          url: req.url?.split("?")[0].replace(/(\/company\/)[a-f0-9]{64}/g, "$1[private-link]"),
         };
       },
       res(res) {

@@ -6,9 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type AuditionDurationSeconds = typeof AuditionDurationSeconds[keyof typeof AuditionDurationSeconds];
-
-
-export const AuditionDurationSeconds = {
-  NUMBER_360: 360,
-} as const;
+export type ApproveCompanyQuestions200 = {
+  approved: boolean;
+  snapshot_hash: string;
+};

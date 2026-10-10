@@ -1,7 +1,7 @@
 import express, { Router, type IRouter } from "express";
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import {
-  db, candidatesTable, sessionsTable, editorSnapshotsTable, screenshotsTable,
+  db, auditionsTable, candidatesTable, sessionsTable, editorSnapshotsTable, screenshotsTable,
   integrityEventsTable, transcriptEntriesTable, type Candidate,
 } from "@workspace/db";
 import {
@@ -11,11 +11,12 @@ import {
 } from "@workspace/api-zod";
 import {
   RoomError, roomDefinition, ownedSession, sessionDto, validateEvidenceTime,
-  finalizeSession, SESSION_MS,
+  finalizeSession, SESSION_MS, sessionLength,
 } from "../lib/candidate-session";
 import { elevenlabsGet, redactProviderError } from "../lib/elevenlabs";
 import { objectStorageClient, ObjectStorageService } from "../lib/objectStorage";
 import { setObjectAclPolicy } from "../lib/objectAcl";
+import { AUDITION_TIMING, DEMO_STARTER } from "../../../../shared/audition-config";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -41,7 +42,7 @@ router.use("/candidate", async (req, res, next) => {
 router.get("/candidate/room", async (_req, res) => {
   const candidate: Candidate = res.locals.candidate;
   let [session] = await db.select().from(sessionsTable).where(eq(sessionsTable.candidateId, candidate.id));
-  if (session?.status === "In progress" && Date.now() >= session.serverStartTime.getTime() + SESSION_MS) {
+  if (session?.status === "In progress" && Date.now() >= session.serverStartTime.getTime() + sessionLength(session)) {
     session = await finalizeSession(session.id, "time_limit");
   }
   const [latest] = session ? await db.select().from(editorSnapshotsTable)
@@ -55,7 +56,7 @@ router.get("/candidate/room", async (_req, res) => {
     session: session ? sessionDto(session) : null,
     screenshot_count: screenshots?.count ?? 0, last_snapshot_ms: latest?.timestampMs ?? null,
     editor_content: session?.finalEditorContent ?? latest?.content ??
-      "function firstUniqueChar(text: string): string | null {\n  // Write your solution here.\n  return null;\n}\n",
+      (await db.select().from(auditionsTable).where(eq(auditionsTable.id, candidate.auditionId)))[0].starterCode,
   }));
 });
 
@@ -73,7 +74,12 @@ router.post("/candidate/start", async (req, res) => {
     await tx.update(candidatesTable).set({
       name: body.candidate_name.trim(), email: body.candidate_email.trim().toLowerCase(), status: "In progress",
     }).where(eq(candidatesTable.id, candidate.id));
-    const [created] = await tx.insert(sessionsTable).values({ candidateId: candidate.id }).returning();
+    const [audition] = await tx.select().from(auditionsTable).where(eq(auditionsTable.id, candidate.auditionId));
+    const [created] = await tx.insert(sessionsTable).values({
+      candidateId: candidate.id, durationSeconds: audition.durationSeconds,
+      behavioralSeconds: AUDITION_TIMING.behavioralSeconds,
+      questionSnapshot: audition.frozenSnapshot,
+    }).returning();
     return created;
   });
   res.json(GetCandidateSessionResponse.parse(sessionDto(session)));
@@ -81,7 +87,7 @@ router.post("/candidate/start", async (req, res) => {
 
 router.get("/candidate/session/:sessionId", async (req, res) => {
   let session = await ownedSession(res.locals.candidate, req.params.sessionId);
-  if (session.status === "In progress" && Date.now() >= session.serverStartTime.getTime() + SESSION_MS) {
+  if (session.status === "In progress" && Date.now() >= session.serverStartTime.getTime() + sessionLength(session)) {
     session = await finalizeSession(session.id, "time_limit");
   }
   res.json(GetCandidateSessionResponse.parse(sessionDto(session)));
@@ -90,7 +96,7 @@ router.get("/candidate/session/:sessionId", async (req, res) => {
 router.post("/candidate/session/:sessionId/voice", async (req, res) => {
   const candidate: Candidate = res.locals.candidate;
   const session = await ownedSession(candidate, req.params.sessionId);
-  if (session.status !== "In progress" || Date.now() >= session.serverStartTime.getTime() + SESSION_MS) {
+  if (session.status !== "In progress" || Date.now() >= session.serverStartTime.getTime() + sessionLength(session)) {
     throw new RoomError(409, "This audition has ended and cannot be restarted.");
   }
   if (session.conversationId || session.voiceIssuedAt) throw new RoomError(409, "The voice conversation has already started and cannot be restarted.");
@@ -111,7 +117,8 @@ router.post("/candidate/session/:sessionId/voice", async (req, res) => {
       candidate_name: candidate.name, company: audition.company, role: audition.role,
       behavioral_questions: audition.frozen_questions.filter(q => q.phase === "Behavioral")
         .map((q, i) => `${i + 1}. ${q.prompt}`).join("\n"),
-      coding_task: audition.frozen_questions.filter(q => q.phase === "Technical").map(q => q.prompt).join("\n"),
+      coding_task: audition.frozen_questions.filter(q => q.phase === "Technical").map(q => q.prompt).join("\n") + "\n\n" +
+        (await db.select().from(auditionsTable).where(eq(auditionsTable.id, candidate.auditionId)))[0].starterCode,
       audition_session_id: session.id,
     },
   }));
@@ -148,7 +155,7 @@ router.post("/candidate/session/:sessionId/screenshots/:timestampMs",
   express.raw({ type: "image/jpeg", limit: "1mb" }), async (req, res) => {
     const session = await ownedSession(res.locals.candidate, req.params.sessionId);
     const timestamp = Number(req.params.timestampMs);
-    if (!Number.isInteger(timestamp) || timestamp < 180_000 || timestamp > SESSION_MS || timestamp % 10_000) {
+    if (!Number.isInteger(timestamp) || timestamp < session.behavioralSeconds * 1000 || timestamp > sessionLength(session) || timestamp % 10_000) {
       throw new RoomError(400, "Screenshots require a ten-second technical-phase slot.");
     }
     validateEvidenceTime(session, timestamp);
@@ -198,8 +205,8 @@ router.post("/candidate/session/:sessionId/commands", async (req, res) => {
   const body = SaveCandidateCommandBody.parse(req.body);
   const elapsed = Math.max(0, Math.min(SESSION_MS, Date.now() - session.serverStartTime.getTime()));
   validateEvidenceTime(session, elapsed);
-  if (body.kind === "technical_start" && elapsed < 179_000) throw new RoomError(409, "Technical phase has not begun.");
-  if (body.kind === "wrap_up" && elapsed < 329_000) throw new RoomError(409, "Wrap-up time has not begun.");
+  if (body.kind === "technical_start" && elapsed < session.behavioralSeconds * 1000 - 1000) throw new RoomError(409, "Technical phase has not begun.");
+  if (body.kind === "wrap_up" && elapsed < sessionLength(session) - Math.min(30, (session.durationSeconds - session.behavioralSeconds) / 4) * 1000 - 1000) throw new RoomError(409, "Wrap-up time has not begun.");
   const controls = {
     technical_start: "Start technical part",
     wrap_up: "Wrap up",
@@ -211,7 +218,7 @@ router.post("/candidate/session/:sessionId/commands", async (req, res) => {
   let text = controls[body.kind];
   if (body.kind === "initial_context") {
     const audition = await roomDefinition(candidate);
-    text = `This is a standardized six-minute ${audition.role} audition for ${audition.company}. Ask only the frozen behavioral questions in order during the first three minutes: ${audition.frozen_questions.filter(q => q.phase === "Behavioral").map(q => q.prompt).join(" / ")}. Do not invent follow-up questions. When told "Start technical part", use this frozen task: ${audition.frozen_questions.filter(q => q.phase === "Technical").map(q => q.prompt).join(" / ")}. App time and integrity controls are not candidate answers.`;
+    text = `This is a standardized ${audition.duration_seconds / 60}-minute ${audition.role} audition for ${audition.company}. Ask only the frozen behavioral questions in order during the first ${session.behavioralSeconds} seconds: ${audition.frozen_questions.filter(q => q.phase === "Behavioral").map(q => q.prompt).join(" / ")}. Do not invent questions. When told "Start technical part", use this frozen task: ${audition.frozen_questions.filter(q => q.phase === "Technical").map(q => q.prompt).join(" / ")}. App time and integrity controls are not candidate answers.`;
   }
   const contextual = ["initial_context", "page_left", "screen_share_stopped"].includes(body.kind);
   await db.transaction(async tx => {

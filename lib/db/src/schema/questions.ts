@@ -10,6 +10,7 @@ export const auditionQuestionsTable = pgTable("audition_questions", {
   position: integer("position").notNull(),
   requirement: text("requirement").notNull(),
   prompt: text("prompt").notNull(),
+  referenceNote: text("reference_note"),
   phase: auditionPhase("phase").notNull(),
   timeLimitSeconds: integer("time_limit_seconds").notNull(),
 }, (t) => [

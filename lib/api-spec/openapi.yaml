@@ -12,6 +12,125 @@ tags:
   - { name: evaluations, description: Requirement-level assessment }
   - { name: credentials, description: Signed session credentials }
 paths:
+  /company:
+    post:
+      operationId: createCompanyAudition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyInput" }
+      responses:
+        "201":
+          description: Company capability link
+          content:
+            application/json:
+              schema: { type: object, required: [company_token], properties: { company_token: { type: string } } }
+  /company/{token}:
+    get:
+      operationId: getCompany
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Company workspace and Callbacks
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompanyWorkspace" }
+  /company/{token}/draft:
+    post:
+      operationId: draftCompanyQuestions
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyDraftInput" }
+      responses:
+        "200":
+          description: Generated or saved editable draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuestionDraft" }
+  /company/{token}/approve:
+    post:
+      operationId: approveCompanyQuestions
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompanyDraftInput" }
+      responses:
+        "200":
+          description: Frozen snapshot
+          content:
+            application/json:
+              schema: { type: object, required: [approved, snapshot_hash], properties: { approved: { type: boolean }, snapshot_hash: { type: string } } }
+  /company/{token}/candidates:
+    post:
+      operationId: inviteCompanyCandidate
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CandidateInvitation" }
+      responses:
+        "201":
+          description: New single-use candidate invite
+          content:
+            application/json:
+              schema: { type: object, required: [id, invite_path], properties: { id: { type: string }, invite_path: { type: string } } }
+  /company/{token}/candidates/{candidateId}/callback:
+    post:
+      operationId: sendCompanyCallback
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: candidateId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Human action marks candidate and returns an email draft, never sends email
+          content:
+            application/json:
+              schema: { type: object, required: [marked, mailto], properties: { marked: { type: boolean }, mailto: { type: string } } }
+  /review/{candidateId}:
+    get:
+      operationId: getHiringReport
+      parameters:
+        - { name: candidateId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Human-review recommendation and evidence, company capability required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HiringReport" }
+  /review/{candidateId}/retry:
+    post:
+      operationId: retryHiringReport
+      parameters:
+        - { name: candidateId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Queued
+          content:
+            application/json:
+              schema: { type: object, properties: { queued: { type: boolean } }, required: [queued] }
+  /review/{candidateId}/screenshots/{screenshotId}:
+    get:
+      operationId: getReviewScreenshot
+      parameters:
+        - { name: candidateId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: screenshotId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Private JPEG, authorized company only
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
   /candidate/room:
     get:
       operationId: getCandidateRoom
@@ -73,7 +192,7 @@ paths:
   /candidate/session/{sessionId}/screenshots/{timestampMs}:
     parameters:
       - { $ref: "#/components/parameters/SessionId" }
-      - { name: timestampMs, in: path, required: true, schema: { type: integer, minimum: 180000, maximum: 360000, multipleOf: 10000 } }
+      - { name: timestampMs, in: path, required: true, schema: { type: integer, minimum: 0, maximum: 360000, multipleOf: 10000 } }
     post:
       operationId: saveCandidateScreenshot
       requestBody:
@@ -463,6 +582,139 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Credential" }
   schemas:
+    CompanyInput:
+      type: object
+      required: [company, contact_email, role, job_description]
+      properties:
+        company: { type: string, minLength: 1, maxLength: 120 }
+        contact_email: { type: string, format: email }
+        role: { type: string, minLength: 1, maxLength: 160 }
+        job_description: { type: string, minLength: 10, maxLength: 8000 }
+    CandidateInvitation:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        email: { type: string, format: email }
+    CompanyDraftInput:
+      type: object
+      properties:
+        draft: { $ref: "#/components/schemas/QuestionDraft" }
+    DraftQuestion:
+      type: object
+      required: [requirement, prompt]
+      properties:
+        requirement: { type: string }
+        prompt: { type: string }
+        reference_note: { type: [string, "null"] }
+    QuestionDraft:
+      type: object
+      required: [behavioral, technical, starter_code, language]
+      properties:
+        behavioral: { $ref: "#/components/schemas/DraftQuestion" }
+        technical:
+          allOf:
+            - { $ref: "#/components/schemas/DraftQuestion" }
+            - type: object
+              required: [follow_up]
+              properties:
+                follow_up: { type: string }
+        starter_code: { type: string }
+        language: { type: string, enum: [Python] }
+    CompanyWorkspace:
+      type: object
+      required: [id, company, contact_email, role, job_description, approval_status, draft, snapshot_hash, approved_at, duration_seconds, candidates]
+      properties:
+        id: { type: string }
+        company: { type: string }
+        contact_email: { type: string }
+        role: { type: string }
+        job_description: { type: string }
+        approval_status: { type: string, enum: [draft, approved] }
+        draft:
+          oneOf:
+            - { $ref: "#/components/schemas/QuestionDraft" }
+            - { type: "null" }
+        snapshot_hash: { type: [string, "null"] }
+        approved_at: { type: [string, "null"] }
+        duration_seconds: { type: integer }
+        candidates:
+          type: array
+          items:
+            type: object
+            required: [id, name, email, status, score, scoring_error, callback_at, invite_path, report_path]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              email: { type: string }
+              status: { type: string, enum: [Invited, In progress, Scoring, Ready] }
+              score: { type: [number, "null"] }
+              scoring_error: { type: [string, "null"] }
+              callback_at: { type: [string, "null"] }
+              invite_path: { type: string }
+              report_path: { type: [string, "null"] }
+    HiringReport:
+      type: object
+      required: [status, error, candidate, company, role, duration_seconds, overall_score, recommendation, reasoning, scores, timeline, vision_error, transcript_missing, final_code, transcript, integrity_flags]
+      properties:
+        status: { type: string, enum: [pending, scoring, ready, error] }
+        error: { type: [string, "null"] }
+        candidate: { $ref: "#/components/schemas/Candidate" }
+        company: { type: string }
+        role: { type: string }
+        duration_seconds: { type: integer }
+        overall_score: { type: [number, "null"] }
+        recommendation: { type: [string, "null"], enum: [Advance, Hold, Not now, null] }
+        reasoning: { type: string }
+        final_code: { type: string }
+        vision_error: { type: [string, "null"] }
+        transcript_missing: { type: boolean }
+        scores:
+          type: array
+          items: { $ref: "#/components/schemas/ReviewScore" }
+        timeline:
+          type: array
+          items:
+            type: object
+            required: [screenshot_id, timestamp_ms, description]
+            properties:
+              screenshot_id: { type: string }
+              timestamp_ms: { type: integer }
+              description: { type: string }
+        transcript:
+          type: array
+          items: { $ref: "#/components/schemas/TranscriptEntry" }
+        integrity_flags:
+          type: array
+          items:
+            type: object
+            required: [id, timestamp_ms, type, details]
+            properties:
+              id: { type: string }
+              timestamp_ms: { type: integer }
+              type: { type: string }
+              details: { type: object, additionalProperties: true }
+    ReviewScore:
+      type: object
+      required: [requirement, level, rationale, needs_review, quotes]
+      properties:
+        requirement: { type: string }
+        level:
+          oneOf:
+            - { type: integer, minimum: 1, maximum: 4 }
+            - { type: string, enum: [not_covered] }
+        rationale: { type: string }
+        needs_review: { type: boolean }
+        quotes:
+          type: array
+          items:
+            type: object
+            required: [source, quote, timestamp_ms, verified]
+            properties:
+              source: { type: string, enum: [transcript, code] }
+              quote: { type: string }
+              timestamp_ms: { type: [integer, "null"] }
+              verified: { type: boolean }
     CandidateRoom:
       type: object
       required: [audition, candidate, session, editor_content, screenshot_count, last_snapshot_ms]
@@ -653,7 +905,7 @@ components:
         role: { type: string }
         job_description: { type: string }
         editor_language: { type: string }
-        duration_seconds: { type: integer, enum: [360] }
+        duration_seconds: { type: integer, minimum: 60, maximum: 360 }
         frozen_questions: { type: array, items: { $ref: "#/components/schemas/FrozenQuestion" } }
         created_at: { type: string, format: date-time }
     AuditionInvitation:
@@ -702,13 +954,13 @@ components:
         deadline_at: { type: string, format: date-time, description: Derived as server_start_time plus 360 seconds }
         status: { type: string, enum: [In progress, Submitted] }
         submitted_at: { type: [string, "null"], format: date-time }
-        finish_reason: { type: [string, "null"], enum: [time_limit, finished_early, null] }
+        finish_reason: { type: [string, "null"], enum: [time_limit, finished_early, conversation_ended, null] }
     SessionSubmission:
       type: object
       additionalProperties: false
       required: [reason]
       properties:
-        reason: { type: string, enum: [time_limit, finished_early] }
+        reason: { type: string, enum: [time_limit, finished_early, conversation_ended] }
         editor_content: { type: string, maxLength: 60000, description: Final editor state captured at submission, never overwrites a ten-second snapshot }
     TranscriptInput:
       type: object

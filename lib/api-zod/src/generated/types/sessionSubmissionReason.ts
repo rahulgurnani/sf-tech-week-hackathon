@@ -12,4 +12,5 @@ export type SessionSubmissionReason = typeof SessionSubmissionReason[keyof typeo
 export const SessionSubmissionReason = {
   time_limit: 'time_limit',
   finished_early: 'finished_early',
+  conversation_ended: 'conversation_ended',
 } as const;

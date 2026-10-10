@@ -1,2 +1,3 @@
 - [Audition product direction](audition-product.md) — User-stated positioning and visual direction for the candidate and hiring-manager experiences.
 - [Paid integration diagnostics](integration-diagnostics.md) — Keep credential-backed probes unavailable in production until verified admin authorization exists.
+- [Database CHECK synchronization](database-checks.md) — Schema push can leave old CHECK definitions active; verify and reconcile changed state/timing rules without resetting history.

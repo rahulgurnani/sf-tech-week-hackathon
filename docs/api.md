@@ -1,5 +1,8 @@
 # Audition data model and API contract
 
+Implemented company-link workflows and asynchronous scoring are documented in
+[Company workspace and hiring reports](company-and-scoring.md).
+
 ## Scope and implementation status
 
 The original general-purpose API remains a foundation: all 23 Audition domain operations
@@ -77,7 +80,7 @@ SDK VAD/input volume detects a candidate turn longer than 75 seconds and sends
 
 Integrity types include `page_left`, `window_blur`, `large_paste` (>50 characters,
 count required), and `screen_share_stopped`. These are observations, not automatic
-proof of misconduct. Capture timestamps must remain inside 0–360000 ms and before
+proof of misconduct. Capture timestamps must remain inside the frozen session duration and before
 effective submission. A 30-second receipt grace admits in-flight, pre-end evidence;
 future and stale captures are rejected. Missing frames are never reconstructed.
 
@@ -87,14 +90,22 @@ Future scoring requires nonempty `message.content` and
 `response_format:{type:"json_object"}`; reasoning fallback stays diagnostics-only.
 
 Development seed: `pnpm --filter @workspace/api-server run seed:room` reuses one
-Google Software Engineer audition with two 90-second behavioral questions, one
-180-second coding task and company-fixed TypeScript. `--test` creates a separate
+Northstar Labs Senior Software Engineer audition with one 60-second behavioral question,
+one 60-second Python bug-fix task and company-fixed Python. `--test` creates a separate
 candidate invite for verification without consuming the demo invitation. Seeding
 does not run automatically in production.
 
 Base path: `/api`. JSON keys use `snake_case`; IDs are UUIDs. Absolute times are
 UTC RFC 3339 strings. Evidence `timestamp_ms` values are integer millisecond
-offsets from `server_start_time`, in **0–360000**, rendered as 0:00–6:00.
+offsets from `server_start_time`. New demos use **0–120000**, rendered as 0:00–2:00;
+legacy sessions retain their own original duration.
+
+Timing is configured once in `shared/audition-config.ts`: Behavioral 60 seconds,
+Technical 60 seconds; technical control at 1:00, wrap-up at 1:45, submission at 2:00.
+Changing both phase values to 180 restores the longer format. Each started session
+locks its duration and private question snapshot. Reference notes never enter
+candidate responses or ElevenLabs dynamic variables. `conversation_ended` submits
+at the server's real receipt time, with no continuation after the voice call ends.
 
 ## Shared model and relationships
 
@@ -108,7 +119,7 @@ zero or more quoted evidence items per result.
 
 | Table | Fields |
 |---|---|
-| `auditions` | `id`, `role`, `job_description`, `editor_language`, sensitive `invite_token`, `duration_seconds` (=360), `created_at` |
+| `auditions` | `id`, `company`, `contact_email`, `role`, `job_description`, `editor_language`, sensitive company `invite_token`, `duration_seconds` (120 for new demos), approval state, frozen snapshot/hash, `created_at` |
 | `audition_questions` | `id`, `audition_id`, `position`, `requirement`, `prompt`, `phase` (Behavioral/Technical), `time_limit_seconds` |
 | `candidates` | `id`, `audition_id`, `name`, `email`, `status`, `created_at` |
 | `sessions` | `id`, unique `candidate_id`, `server_start_time`, nullable `submitted_at`, nullable `finish_reason`, `status` |
@@ -133,19 +144,19 @@ insertion by the future handler.
 - Creation accepts `frozen_questions` as an ordered array of copied prompts,
   requirements, phases and limits, not pointers to editable question templates.
 - `position` must be unique and contiguous starting at 1. Behavioral questions
-  precede Technical questions. Limits sum to 180 seconds **per phase**.
+  precede Technical questions. The current demo freezes one 60-second question per phase.
 - Questions, role description, timing, and editor language are immutable after
   creation. There is deliberately no update-question or change-phase endpoint.
 - Every candidate receives the same prompts, order and limits; no adaptive
   follow-up generation. Server phase is Behavioral for elapsed time below
-  180 seconds, then Technical until the 360-second deadline.
+  the frozen Behavioral duration, then Technical until the frozen deadline.
 - `server_start_time` is server-generated and never client-supplied.
-  `deadline_at` is derived as start +360 seconds, not stored separately.
+  `deadline_at` is derived as start + frozen session duration, not stored separately.
 - There are no pause, resume, reset or restart endpoints.
-- Editor snapshots use slots 0, 10000, 20000, …, 360000 milliseconds.
+- Editor snapshots use slots 0, 10000, 20000, …, through the frozen duration.
   Capture continues every ten seconds even if code is unchanged. Slot 0 is
   the initial state; later-phase slots contain the company-fixed editor content.
-  A final snapshot at 360000 is allowed. Cadence collection is not implemented.
+  A final snapshot at the deadline is allowed. The candidate client collects this cadence.
 
 ### Candidate and session state
 
@@ -154,7 +165,7 @@ Only the server changes status: invitation, start, finalization, then successful
 evaluation persistence. No arbitrary status PATCH is exposed.
 
 Session status is `In progress` or `Submitted`; finalization reason is
-`time_limit` or `finished_early`. An early finish requires UI confirmation and
+`time_limit`, `finished_early`, or `conversation_ended`. An early finish requires UI confirmation and
 is irreversible. Automatic deadline finalization records the effective deadline
 as `submitted_at`, even if a worker processes the action later. No evidence after
 the effective submission time is accepted. A retry of start/submit returns the
@@ -166,8 +177,7 @@ Allowed types are `page_left`, `large_paste`, `screen_share_stopped`. Each has a
 sequence, elapsed timestamp, and a bounded details object. `duration_ms` is
 optional for page-left/share-stop signals; `character_count` describes large
 pastes without storing pasted text separately. These are informational events,
-not proof of dishonesty. Detection thresholds and screenshot cadence are
-intentionally deferred.
+not proof of dishonesty. The candidate client detects these events and captures technical-phase screenshots every ten seconds.
 
 ### Evaluation
 

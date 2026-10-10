@@ -5,15 +5,16 @@ import { once } from "node:events";
 import { eq } from "drizzle-orm";
 import {
   db, pool, auditionsTable, candidatesTable, sessionsTable, editorSnapshotsTable,
-  transcriptEntriesTable, integrityEventsTable, type Session,
+  transcriptEntriesTable, integrityEventsTable, evaluationsTable, type Session,
 } from "@workspace/db";
+import { AUDITION_MS } from "../../../../shared/audition-config";
 import app from "../app";
 import { validateEvidenceTime } from "./candidate-session";
 import { createNebiusClient } from "./nebius-client";
 
 test("Evidence uses server time, effective end and bounded receipt grace", () => {
   const start = Date.now();
-  const session = { serverStartTime: new Date(start), submittedAt: null } as Session;
+  const session = { serverStartTime: new Date(start), submittedAt: null, durationSeconds: AUDITION_MS / 1000 } as Session;
   assert.doesNotThrow(() => validateEvidenceTime(session, 10_000, start + 10_000));
   assert.throws(() => validateEvidenceTime(session, 20_000, start + 10_000));
   assert.throws(() => validateEvidenceTime(session, 0, start + 30_001));
@@ -63,6 +64,7 @@ test("Candidate API is scoped, atomic, irreversible and persists final editor/ap
     return { status: response.status, data: await response.json() as Record<string, any> };
   };
   let sessionId: string | undefined;
+  let otherSessionId: string | undefined;
   try {
     assert.equal((await request("/room", undefined, "invalid")).status, 401);
     const identity = { candidate_name: "API test", candidate_email: candidate.email };
@@ -72,7 +74,7 @@ test("Candidate API is scoped, atomic, irreversible and persists final editor/ap
     assert.equal(starts[0].status, 200); assert.equal(starts[1].status, 200);
     assert.equal(starts[0].data.id, starts[1].data.id);
     assert.equal(starts[0].data.server_start_time, starts[1].data.server_start_time);
-    assert.equal(Date.parse(starts[0].data.deadline_at) - Date.parse(starts[0].data.server_start_time), 360_000);
+    assert.equal(Date.parse(starts[0].data.deadline_at) - Date.parse(starts[0].data.server_start_time), AUDITION_MS);
     sessionId = starts[0].data.id;
     assert.equal((await request(`/session/${sessionId}`, undefined, otherToken)).status, 404);
     assert.equal((await request(`/session/${sessionId}/submit`, { reason: "time_limit" })).status, 409);
@@ -98,13 +100,23 @@ test("Candidate API is scoped, atomic, irreversible and persists final editor/ap
     assert.equal(room.data.candidate.status, "Submitted");
     assert.equal((await db.select().from(editorSnapshotsTable).where(eq(editorSnapshotsTable.sessionId, sessionId!))).length, 1);
     assert.equal((await db.select().from(integrityEventsTable).where(eq(integrityEventsTable.sessionId, sessionId!))).length, 1);
+    const otherStart = await request("/start", { candidate_name: other.name, candidate_email: other.email, screen_surface: "monitor" }, otherToken);
+    assert.equal(otherStart.status, 200); otherSessionId = otherStart.data.id;
+    const goodbye = await request(`/session/${otherSessionId}/submit`, { reason: "conversation_ended", editor_content: "def done(): pass" }, otherToken);
+    assert.equal(goodbye.status, 200); assert.equal(goodbye.data.finish_reason, "conversation_ended");
+    assert.ok(Date.parse(goodbye.data.submitted_at) < Date.parse(otherStart.data.deadline_at));
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     if (sessionId) {
       await db.delete(editorSnapshotsTable).where(eq(editorSnapshotsTable.sessionId, sessionId));
       await db.delete(integrityEventsTable).where(eq(integrityEventsTable.sessionId, sessionId));
+      await db.delete(evaluationsTable).where(eq(evaluationsTable.sessionId, sessionId));
       await db.delete(transcriptEntriesTable).where(eq(transcriptEntriesTable.sessionId, sessionId));
       await db.delete(sessionsTable).where(eq(sessionsTable.id, sessionId));
+    }
+    if (otherSessionId) {
+      await db.delete(evaluationsTable).where(eq(evaluationsTable.sessionId, otherSessionId));
+      await db.delete(sessionsTable).where(eq(sessionsTable.id, otherSessionId));
     }
     await db.delete(candidatesTable).where(eq(candidatesTable.auditionId, audition.id));
     await db.delete(auditionsTable).where(eq(auditionsTable.id, audition.id));

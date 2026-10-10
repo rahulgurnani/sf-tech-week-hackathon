@@ -15,4 +15,5 @@ export type SessionFinishReason = typeof SessionFinishReason[keyof typeof Sessio
 export const SessionFinishReason = {
   time_limit: 'time_limit',
   finished_early: 'finished_early',
+  conversation_ended: 'conversation_ended',
 } as const;

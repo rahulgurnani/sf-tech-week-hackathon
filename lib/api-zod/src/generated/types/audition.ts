@@ -5,7 +5,6 @@
  * Audition foundation and development-only integration diagnostics. Audition domain endpoints remain 501 stubs.
  * OpenAPI spec version: 0.2.0
  */
-import type { AuditionDurationSeconds } from './auditionDurationSeconds';
 import type { FrozenQuestion } from './frozenQuestion';
 
 export interface Audition {
@@ -13,7 +12,11 @@ export interface Audition {
   role: string;
   job_description: string;
   editor_language: string;
-  duration_seconds: AuditionDurationSeconds;
+  /**
+     * @minimum 60
+     * @maximum 360
+     */
+  duration_seconds: number;
   frozen_questions: FrozenQuestion[];
   created_at: Date;
 }

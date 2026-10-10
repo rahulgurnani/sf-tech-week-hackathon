@@ -5,8 +5,11 @@ import {
 } from "@workspace/db";
 import { elevenlabsGet, redactProviderError } from "./elevenlabs";
 import { logger } from "./logger";
+import { enqueueScoring } from "./scoring";
 
-export const SESSION_MS = 360_000;
+import { AUDITION_MS } from "../../../../shared/audition-config";
+export const SESSION_MS = AUDITION_MS;
+export const sessionLength = (session: Session) => session.durationSeconds * 1000;
 export class RoomError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
 }
@@ -15,7 +18,7 @@ export function sessionDto(session: Session) {
   return {
     id: session.id, candidate_id: session.candidateId,
     server_start_time: session.serverStartTime,
-    deadline_at: new Date(session.serverStartTime.getTime() + SESSION_MS),
+    deadline_at: new Date(session.serverStartTime.getTime() + sessionLength(session)),
     status: session.status, submitted_at: session.submittedAt,
     finish_reason: session.finishReason,
     server_now: new Date(), conversation_id: session.conversationId,
@@ -39,7 +42,7 @@ export async function roomDefinition(candidate: Candidate) {
   return {
     id: audition.id, company: audition.company, role: audition.role,
     job_description: audition.jobDescription, editor_language: audition.editorLanguage,
-    duration_seconds: 360 as const, created_at: audition.createdAt,
+    duration_seconds: audition.durationSeconds, created_at: audition.createdAt,
     frozen_questions: questions.map(q => ({
       id: q.id, position: q.position, requirement: q.requirement, prompt: q.prompt,
       phase: q.phase, time_limit_seconds: q.timeLimitSeconds,
@@ -51,31 +54,33 @@ export async function roomDefinition(candidate: Candidate) {
 export function validateEvidenceTime(session: Session, timestamp: number, now = Date.now()) {
   const elapsed = Math.max(0, now - session.serverStartTime.getTime());
   const end = session.submittedAt
-    ? session.submittedAt.getTime() - session.serverStartTime.getTime() : SESSION_MS;
+    ? session.submittedAt.getTime() - session.serverStartTime.getTime() : sessionLength(session);
   if (timestamp > end || timestamp > elapsed + 1500 || elapsed - timestamp > 30_000 ||
-      elapsed > SESSION_MS + 30_000) {
+      elapsed > sessionLength(session) + 30_000) {
     throw new RoomError(409, "Evidence is outside this session's capture window.");
   }
 }
 
-export async function finalizeSession(id: string, reason: "time_limit" | "finished_early") {
-  return db.transaction(async tx => {
+export async function finalizeSession(id: string, reason: "time_limit" | "finished_early" | "conversation_ended") {
+  const result = await db.transaction(async tx => {
     await tx.execute(sql`SELECT id FROM sessions WHERE id = ${id} FOR UPDATE`);
     const [session] = await tx.select().from(sessionsTable).where(eq(sessionsTable.id, id));
     if (session.status === "Submitted") return session;
-    const deadline = session.serverStartTime.getTime() + SESSION_MS;
+    const deadline = session.serverStartTime.getTime() + sessionLength(session);
     const now = Date.now();
     if (reason === "time_limit" && now < deadline) throw new RoomError(409, "The time limit has not been reached.");
     const expired = now >= deadline || reason === "time_limit";
     const [updated] = await tx.update(sessionsTable).set({
       status: "Submitted",
       submittedAt: new Date(expired ? deadline : Math.max(now, session.serverStartTime.getTime())),
-      finishReason: expired ? "time_limit" : "finished_early",
+      finishReason: expired ? "time_limit" : reason,
       transcriptStatus: session.conversationId ? "pending" : "not_started",
     }).where(eq(sessionsTable.id, id)).returning();
     await tx.update(candidatesTable).set({ status: "Submitted" }).where(eq(candidatesTable.id, session.candidateId));
     return updated;
   });
+  await enqueueScoring(result.id);
+  return result;
 }
 
 export async function syncTranscript(session: Session) {
@@ -95,7 +100,7 @@ export async function syncTranscript(session: Session) {
     const offset = typeof data.metadata?.start_time_unix_secs === "number"
       ? Math.max(0, data.metadata.start_time_unix_secs * 1000 - session.serverStartTime.getTime())
       : session.conversationStartOffsetMs ?? 0;
-    const cutoff = (session.submittedAt?.getTime() ?? session.serverStartTime.getTime() + SESSION_MS) - session.serverStartTime.getTime();
+    const cutoff = (session.submittedAt?.getTime() ?? session.serverStartTime.getTime() + sessionLength(session)) - session.serverStartTime.getTime();
     await db.transaction(async tx => {
       await tx.execute(sql`SELECT id FROM sessions WHERE id = ${session.id} FOR UPDATE`);
       const appEntries = await tx.select().from(transcriptEntriesTable).where(and(
@@ -107,8 +112,8 @@ export async function syncTranscript(session: Session) {
         const timestampMs = Math.max(0, Math.round(offset + entry.time_in_call_secs * 1000));
         if (timestampMs > cutoff) return [];
         const isAppMessage = Boolean(entry.contextual_update_info) ||
-          (entry.role === "user" && (entry.source_medium === "text" || appEntries.some(app =>
-            app.text === entry.message && Math.abs(app.timestampMs - timestampMs) <= 10_000)));
+          (entry.role === "user" && (entry.source_medium === "text" || (entry.source_medium == null && appEntries.some(app =>
+            app.text === entry.message && Math.abs(app.timestampMs - timestampMs) <= 10_000))));
         return [{
           sessionId: session.id, timestampMs,
           speaker: (entry.role === "user" ? "candidate" : "interviewer") as "candidate" | "interviewer",
@@ -123,6 +128,8 @@ export async function syncTranscript(session: Session) {
       if (entries.length) await tx.insert(transcriptEntriesTable).values(entries.map((entry, i) => ({ ...entry, sequence: i + 1 })));
       await tx.update(sessionsTable).set({ transcriptStatus: "ready", transcriptError: null })
         .where(eq(sessionsTable.id, session.id));
+      await tx.execute(sql`UPDATE evaluations SET status = 'pending' WHERE session_id = ${session.id}
+        AND status = 'ready' AND report->>'transcript_status_at_scoring' IS DISTINCT FROM 'ready'`);
     });
   } catch (error) {
     const message = redactProviderError(error instanceof Error ? error.message : "Transcript import failed.");
@@ -139,7 +146,7 @@ export function startSessionMaintenance() {
     busy = true;
     try {
       const expired = await db.select().from(sessionsTable).where(and(
-        eq(sessionsTable.status, "In progress"), lt(sessionsTable.serverStartTime, new Date(Date.now() - SESSION_MS)),
+        eq(sessionsTable.status, "In progress"), sql`${sessionsTable.serverStartTime} + ${sessionsTable.durationSeconds} * interval '1 second' <= now()`,
       ));
       for (const session of expired) await finalizeSession(session.id, "time_limit");
       const pending = await db.select().from(sessionsTable).where(and(

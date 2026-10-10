@@ -1,0 +1,56 @@
+.audition-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.audition-logo-mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+
+.audition-logo-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.audition-logo-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.audition-logo-wordmark {
+  color: #f7fbfa;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.45px;
+}
+
+.audition-logo-tagline {
+  margin-top: 3px;
+  color: #9aafb7;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.1px;
+}
+
+/* Explicit light-header variant: the shared mark stays identical, wordmark shifts for contrast. */
+.audition-logo.light-header .audition-logo-wordmark {
+  color: #173648;
+}
+
+.audition-logo.light-header .audition-logo-tagline {
+  color: #778b94;
+}

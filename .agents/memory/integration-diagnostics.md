@@ -54,3 +54,13 @@ models. Their completion budgets can be consumed before answer text appears.
 
 **How to apply:** Check finish reason and token usage before treating empty
 content as a connection failure. Never reuse diagnostic fallback for scoring.
+
+JSON-object output does not enforce field names or nesting. For generated
+question drafts, use Nebius's documented strict JSON-schema format and still
+validate the result before allowing approval.
+
+**Why:** Live draft generation moved editor fields into the technical object,
+omitted required competency keys and copied example field descriptions as values.
+
+**How to apply:** Specify real-content instructions instead of placeholder values;
+fail visibly on invalid data, never invent missing questions or code.

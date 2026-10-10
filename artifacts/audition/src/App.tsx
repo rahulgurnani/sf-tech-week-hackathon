@@ -6,6 +6,9 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import AdminHealthPage from '@/pages/admin-health';
 import CandidateAudition from '@/pages/candidate-audition';
+import HiringReportPage from '@/pages/hiring-report';
+import NewAuditionPage from '@/pages/new-audition';
+import CompanyWorkspacePage from '@/pages/company-workspace';
 import {
   Redirect,
   Route,
@@ -22,9 +25,13 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/" component={() => <Redirect to="/admin/health" />} />
+        <Route path="/" component={() => <Redirect to="/new-audition" />} />
+        <Route path="/new-audition" component={NewAuditionPage} />
+        <Route path="/company/:token/callbacks" component={CompanyWorkspacePage} />
+        <Route path="/company/:token" component={CompanyWorkspacePage} />
         <Route path="/admin/health" component={AdminHealthPage} />
         <Route path="/invite/:token" component={CandidateAudition} />
+          <Route path="/report/:candidateId" component={HiringReportPage} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

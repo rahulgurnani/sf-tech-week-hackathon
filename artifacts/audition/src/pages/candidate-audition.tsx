@@ -5,9 +5,21 @@ import {
   Activity, AlertCircle, ArrowRight, Clock, Code2, LockKeyhole,
   Mic2, Monitor, Radio, RotateCw, ShieldCheck, Sparkles, Square, Terminal,
 } from "lucide-react";
+import AuditionLogo from "@/components/audition-logo";
 import { useCandidateAudition } from "@/hooks/use-candidate-audition";
 import type { CandidateRoomController } from "@/lib/candidate-room-types";
+import { AUDITION_SECONDS, AUDITION_TIMING, DURATION_LABEL } from "../../../../shared/audition-config";
 import "./candidate-audition.css";
+
+function isDesktopChrome(userAgent: string) {
+  const isChrome = /Chrome\//.test(userAgent);
+  const isUnsupportedBrowser = /Edg|Edge|OPR|Opera|SamsungBrowser|Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+  return isChrome && !isUnsupportedBrowser;
+}
+
+function formatPhaseDuration(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
 function InviteRoute() {
   const { token = "" } = useParams<{ token: string }>();
@@ -26,6 +38,7 @@ function CandidateAudition({ token }: { token: string }) {
   const [screenConsent, setScreenConsent] = useState(false);
   const [micConsent, setMicConsent] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
+  const [needsBrowserWarning] = useState(() => typeof navigator !== "undefined" && !isDesktopChrome(navigator.userAgent));
   useEffect(() => {
     const existingMeta = document.querySelector<HTMLMetaElement>('meta[name="referrer"]');
     const previousContent = existingMeta?.content;
@@ -60,7 +73,7 @@ function CandidateAudition({ token }: { token: string }) {
     <div className="candidate-audition">
       <div className="ca-shell">
         <aside className="ca-sidebar" aria-label="Audition navigation">
-          <div className="ca-brand"><span className="ca-mark" aria-hidden="true" /><span>audition<small>fair skill signals</small></span></div>
+          <div className="ca-brand"><AuditionLogo /></div>
           <div className="ca-side-label">Your audition</div>
           <div className="ca-side-link" aria-current="page"><Activity size={16} /><span>Audition room</span></div>
           <div className="ca-side-foot">Your responses are private to you and the hiring team.</div>
@@ -72,6 +85,7 @@ function CandidateAudition({ token }: { token: string }) {
           </header>
 
           <div className="ca-content">
+            {needsBrowserWarning && <div className="ca-notice warning ca-browser-warning" role="alert"><Monitor size={16} /><span>{`This audition works in Google Chrome on a computer. Please open the link there.`}</span></div>}
             {loading && !room ? <LoadingRoom /> : error && !room ? (
               <section className="ca-panel ca-error-page" role="alert">
                 <div className="ca-spotlight" aria-hidden="true" />
@@ -88,7 +102,7 @@ function CandidateAudition({ token }: { token: string }) {
                   <div>
                     <div className="ca-overline">{beforeStart ? "A fair, focused conversation" : stage === "submitted" ? "Audition submitted" : "Candidate room"}</div>
                     <h1>{candidateName || candidate?.name || "Your audition"} <span className="ca-company-pill">{audition.company}</span></h1>
-                    <p>{audition.role} <span aria-hidden="true">·</span> Six-minute live voice audition</p>
+                    <p>{audition.role} <span aria-hidden="true">·</span> {DURATION_LABEL} live voice audition</p>
                   </div>
                   {(stage === "active" || stage === "starting" || stage === "submitting") && session && (
                     <div className="ca-timer" aria-label={`${time} remaining`}><Clock size={16} /><strong>{time}</strong><span>remaining</span></div>
@@ -195,7 +209,7 @@ type ReadyStageProps = {
 
 function ReadyStage(props: ReadyStageProps) {
   return <>
-    <div className="ca-notice"><Sparkles size={16} /><span><strong>A calm, consistent six minutes.</strong> The questions are frozen before the interview and the technical workspace is prepared for your role.</span></div>
+    <div className="ca-notice"><Sparkles size={16} /><span><strong>A calm, consistent two minutes.</strong> The questions are frozen before the interview and the technical workspace is prepared for your role.</span></div>
     <div className="ca-ready-grid">
       <section className="ca-panel ca-ready-main">
         <div className="ca-spotlight" aria-hidden="true" />
@@ -210,16 +224,16 @@ function ReadyStage(props: ReadyStageProps) {
         <label className="ca-check"><input type="checkbox" checked={props.micConsent} onChange={(event) => props.setMicConsent(event.target.checked)} /><span>I consent to microphone access for the live voice interview and understand that my spoken responses may be transcribed.</span></label>
         <div className="ca-ready-actions">
           <button className="ca-primary" disabled={!props.canStart} onClick={props.onStart}>{props.starting ? <><span className="ca-spinner" /> Checking permissions…</> : <>Check permissions &amp; begin <ArrowRight size={14} /></>}</button>
-          <span className="ca-meta-label">{props.starting ? "The timer has not started" : "6 minutes · cannot pause"}</span>
+          <span className="ca-meta-label">{props.starting ? "The timer has not started" : `${Math.floor(AUDITION_SECONDS / 60)} minutes · cannot pause`}</span>
         </div>
         <div className="ca-browser-note"><Monitor size={16} /><span><strong>For the smoothest setup, open this invite in a separate desktop Chrome tab.</strong> After you begin, Chrome will ask for microphone access and screen sharing. Select the entire monitor; a browser tab or window does not meet the screen-only requirement.</span></div>
       </section>
       <aside className="ca-panel ca-setup-aside">
         <h3>Your audition details</h3>
-        <div className="ca-detail-row"><div className="ca-detail-icon"><Clock size={15} /></div><div><b>Six minutes, one continuous session</b><span>The timer starts when the session begins and continues if you leave this page.</span></div></div>
+        <div className="ca-detail-row"><div className="ca-detail-icon"><Clock size={15} /></div><div><b>Two minutes, one continuous session</b><span>The timer starts when the session begins and continues if you leave this page.</span></div></div>
         <div className="ca-detail-row"><div className="ca-detail-icon"><Mic2 size={15} /></div><div><b>Voice conversation</b><span>Answer naturally. You can speak at your own pace while the interviewer listens.</span></div></div>
         <div className="ca-detail-row"><div className="ca-detail-icon"><Code2 size={15} /></div><div><b>Technical workspace · {props.language}</b><span>{props.jobDescription || `A coding exercise prepared for your ${props.role} interview.`}</span></div></div>
-        <div className="ca-timeline"><span>Conversation</span><span className="ca-timeline-bar"><i /><i /></span><span>Code</span></div>
+        <div className="ca-timeline"><span>Conversation · {formatPhaseDuration(AUDITION_TIMING.behavioralSeconds)}</span><span className="ca-timeline-bar"><i /><i /></span><span>Code · {formatPhaseDuration(AUDITION_TIMING.technicalSeconds)}</span></div>
       </aside>
     </div>
   </>;
@@ -323,9 +337,9 @@ function SubmittedStage({ session, retrySubmission, submitting }: { session: Can
   return <section className="ca-panel ca-complete" role="status">
     <div className="ca-spotlight" aria-hidden="true" />
     <div className="ca-overline">Session submitted</div>
-    <h2>Your audition is complete.</h2>
+    <h2>Your audition is complete</h2>
     <p>This session has ended and cannot be restarted. The hiring team will review your responses before deciding on next steps.</p>
-    <p>{session?.finish_reason === "finished_early" ? "You chose to finish before the time limit." : session?.finish_reason === "time_limit" ? "The six-minute time limit was reached." : "Your responses have been submitted."}</p>
+    <p>{session?.finish_reason === "finished_early" ? "You chose to finish before the time limit." : session?.finish_reason === "time_limit" ? "The two-minute time limit was reached." : session?.finish_reason === "conversation_ended" ? "The interviewer ended the call." : "Your responses have been submitted."}</p>
     <div className={`ca-complete-state ${transcriptError ? "error" : ""}`}><span className={transcriptStatus === "pending" ? "ca-spinner" : ""} aria-hidden="true" />{transcriptCopy}</div>
     {transcriptError && <p className="ca-meta-label">Your submission remains saved. The transcript service reported an issue.</p>}
     {session?.status !== "Submitted" && <button className="ca-secondary" style={{ marginTop: 16 }} disabled={submitting} onClick={retrySubmission}><RotateCw size={14} /> {submitting ? "Retrying…" : "Retry submission"}</button>}

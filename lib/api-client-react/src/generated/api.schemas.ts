@@ -5,12 +5,254 @@
  * Audition foundation and development-only integration diagnostics. Audition domain endpoints remain 501 stubs.
  * OpenAPI spec version: 0.2.0
  */
-export type AuditionDurationSeconds = typeof AuditionDurationSeconds[keyof typeof AuditionDurationSeconds];
+export interface CompanyInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  company: string;
+  contact_email: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  role: string;
+  /**
+     * @minLength 10
+     * @maxLength 8000
+     */
+  job_description: string;
+}
+
+export interface CandidateInvitation {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  email: string;
+}
+
+export interface DraftQuestion {
+  requirement: string;
+  prompt: string;
+  /** @nullable */
+  reference_note?: string | null;
+}
+
+export type QuestionDraftLanguage = typeof QuestionDraftLanguage[keyof typeof QuestionDraftLanguage];
 
 
-export const AuditionDurationSeconds = {
-  NUMBER_360: 360,
+export const QuestionDraftLanguage = {
+  Python: 'Python',
 } as const;
+
+export type QuestionDraftTechnical = DraftQuestion & {
+  follow_up: string;
+};
+
+export interface QuestionDraft {
+  behavioral: DraftQuestion;
+  technical: QuestionDraftTechnical;
+  starter_code: string;
+  language: QuestionDraftLanguage;
+}
+
+export interface CompanyDraftInput {
+  draft?: QuestionDraft;
+}
+
+export type CompanyWorkspaceApprovalStatus = typeof CompanyWorkspaceApprovalStatus[keyof typeof CompanyWorkspaceApprovalStatus];
+
+
+export const CompanyWorkspaceApprovalStatus = {
+  draft: 'draft',
+  approved: 'approved',
+} as const;
+
+export type CompanyWorkspaceCandidatesItemStatus = typeof CompanyWorkspaceCandidatesItemStatus[keyof typeof CompanyWorkspaceCandidatesItemStatus];
+
+
+export const CompanyWorkspaceCandidatesItemStatus = {
+  Invited: 'Invited',
+  In_progress: 'In progress',
+  Scoring: 'Scoring',
+  Ready: 'Ready',
+} as const;
+
+export type CompanyWorkspaceCandidatesItem = {
+  id: string;
+  name: string;
+  email: string;
+  status: CompanyWorkspaceCandidatesItemStatus;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  scoring_error: string | null;
+  /** @nullable */
+  callback_at: string | null;
+  invite_path: string;
+  /** @nullable */
+  report_path: string | null;
+};
+
+export interface CompanyWorkspace {
+  id: string;
+  company: string;
+  contact_email: string;
+  role: string;
+  job_description: string;
+  approval_status: CompanyWorkspaceApprovalStatus;
+  draft: QuestionDraft | null;
+  /** @nullable */
+  snapshot_hash: string | null;
+  /** @nullable */
+  approved_at: string | null;
+  duration_seconds: number;
+  candidates: CompanyWorkspaceCandidatesItem[];
+}
+
+export type HiringReportStatus = typeof HiringReportStatus[keyof typeof HiringReportStatus];
+
+
+export const HiringReportStatus = {
+  pending: 'pending',
+  scoring: 'scoring',
+  ready: 'ready',
+  error: 'error',
+} as const;
+
+/**
+ * @nullable
+ */
+export type HiringReportRecommendation = typeof HiringReportRecommendation[keyof typeof HiringReportRecommendation] | null;
+
+
+export const HiringReportRecommendation = {
+  Advance: 'Advance',
+  Hold: 'Hold',
+  Not_now: 'Not now',
+} as const;
+
+export type HiringReportTimelineItem = {
+  screenshot_id: string;
+  timestamp_ms: number;
+  description: string;
+};
+
+export type HiringReportIntegrityFlagsItemDetails = { [key: string]: unknown };
+
+export type HiringReportIntegrityFlagsItem = {
+  id: string;
+  timestamp_ms: number;
+  type: string;
+  details: HiringReportIntegrityFlagsItemDetails;
+};
+
+export type CandidateStatus = typeof CandidateStatus[keyof typeof CandidateStatus];
+
+
+export const CandidateStatus = {
+  Invited: 'Invited',
+  In_progress: 'In progress',
+  Submitted: 'Submitted',
+  Analyzed: 'Analyzed',
+} as const;
+
+export interface Candidate {
+  id: string;
+  audition_id: string;
+  name: string;
+  email: string;
+  status: CandidateStatus;
+  created_at: string;
+}
+
+export type ReviewScoreQuotesItemSource = typeof ReviewScoreQuotesItemSource[keyof typeof ReviewScoreQuotesItemSource];
+
+
+export const ReviewScoreQuotesItemSource = {
+  transcript: 'transcript',
+  code: 'code',
+} as const;
+
+export type ReviewScoreQuotesItem = {
+  source: ReviewScoreQuotesItemSource;
+  quote: string;
+  /** @nullable */
+  timestamp_ms: number | null;
+  verified: boolean;
+};
+
+export interface ReviewScore {
+  requirement: string;
+  level: number | 'not_covered';
+  rationale: string;
+  needs_review: boolean;
+  quotes: ReviewScoreQuotesItem[];
+}
+
+/**
+ * Milliseconds elapsed since server_start_time, not an absolute clock time
+ * @minimum 0
+ * @maximum 360000
+ */
+export type TimestampMs = number;
+
+export type TranscriptInputSpeaker = typeof TranscriptInputSpeaker[keyof typeof TranscriptInputSpeaker];
+
+
+export const TranscriptInputSpeaker = {
+  candidate: 'candidate',
+  interviewer: 'interviewer',
+} as const;
+
+export interface TranscriptInput {
+  /** @minimum 1 */
+  sequence: number;
+  timestamp_ms: TimestampMs;
+  speaker: TranscriptInputSpeaker;
+  text: string;
+}
+
+export type TranscriptEntryOrigin = typeof TranscriptEntryOrigin[keyof typeof TranscriptEntryOrigin];
+
+
+export const TranscriptEntryOrigin = {
+  app: 'app',
+  elevenlabs: 'elevenlabs',
+} as const;
+
+export type TranscriptEntry = TranscriptInput & {
+  id: string;
+  session_id: string;
+  /** App controls and updates are never candidate scoring evidence */
+  is_app_message: boolean;
+  origin: TranscriptEntryOrigin;
+};
+
+export interface HiringReport {
+  status: HiringReportStatus;
+  /** @nullable */
+  error: string | null;
+  candidate: Candidate;
+  company: string;
+  role: string;
+  duration_seconds: number;
+  /** @nullable */
+  overall_score: number | null;
+  /** @nullable */
+  recommendation: HiringReportRecommendation;
+  reasoning: string;
+  final_code: string;
+  /** @nullable */
+  vision_error: string | null;
+  transcript_missing: boolean;
+  scores: ReviewScore[];
+  timeline: HiringReportTimelineItem[];
+  transcript: TranscriptEntry[];
+  integrity_flags: HiringReportIntegrityFlagsItem[];
+}
 
 export type QuestionInputPhase = typeof QuestionInputPhase[keyof typeof QuestionInputPhase];
 
@@ -44,7 +286,11 @@ export interface Audition {
   role: string;
   job_description: string;
   editor_language: string;
-  duration_seconds: AuditionDurationSeconds;
+  /**
+     * @minimum 60
+     * @maximum 360
+     */
+  duration_seconds: number;
   frozen_questions: FrozenQuestion[];
   created_at: string;
 }
@@ -52,25 +298,6 @@ export interface Audition {
 export type CandidateRoomAudition = Audition & {
   company: string;
 };
-
-export type CandidateStatus = typeof CandidateStatus[keyof typeof CandidateStatus];
-
-
-export const CandidateStatus = {
-  Invited: 'Invited',
-  In_progress: 'In progress',
-  Submitted: 'Submitted',
-  Analyzed: 'Analyzed',
-} as const;
-
-export interface Candidate {
-  id: string;
-  audition_id: string;
-  name: string;
-  email: string;
-  status: CandidateStatus;
-  created_at: string;
-}
 
 export type SessionStatus = typeof SessionStatus[keyof typeof SessionStatus];
 
@@ -89,6 +316,7 @@ export type SessionFinishReason = typeof SessionFinishReason[keyof typeof Sessio
 export const SessionFinishReason = {
   time_limit: 'time_limit',
   finished_early: 'finished_early',
+  conversation_ended: 'conversation_ended',
 } as const;
 
 export interface Session {
@@ -192,13 +420,6 @@ export const RoomIntegrityInputType = {
   large_paste: 'large_paste',
   screen_share_stopped: 'screen_share_stopped',
 } as const;
-
-/**
- * Milliseconds elapsed since server_start_time, not an absolute clock time
- * @minimum 0
- * @maximum 360000
- */
-export type TimestampMs = number;
 
 export interface RoomIntegrityInput {
   event_id: string;
@@ -421,6 +642,7 @@ export type SessionSubmissionReason = typeof SessionSubmissionReason[keyof typeo
 export const SessionSubmissionReason = {
   time_limit: 'time_limit',
   finished_early: 'finished_early',
+  conversation_ended: 'conversation_ended',
 } as const;
 
 export interface SessionSubmission {
@@ -431,38 +653,6 @@ export interface SessionSubmission {
      */
   editor_content?: string;
 }
-
-export type TranscriptInputSpeaker = typeof TranscriptInputSpeaker[keyof typeof TranscriptInputSpeaker];
-
-
-export const TranscriptInputSpeaker = {
-  candidate: 'candidate',
-  interviewer: 'interviewer',
-} as const;
-
-export interface TranscriptInput {
-  /** @minimum 1 */
-  sequence: number;
-  timestamp_ms: TimestampMs;
-  speaker: TranscriptInputSpeaker;
-  text: string;
-}
-
-export type TranscriptEntryOrigin = typeof TranscriptEntryOrigin[keyof typeof TranscriptEntryOrigin];
-
-
-export const TranscriptEntryOrigin = {
-  app: 'app',
-  elevenlabs: 'elevenlabs',
-} as const;
-
-export type TranscriptEntry = TranscriptInput & {
-  id: string;
-  session_id: string;
-  /** App controls and updates are never candidate scoring evidence */
-  is_app_message: boolean;
-  origin: TranscriptEntryOrigin;
-};
 
 export interface TranscriptBatch {
   /**
@@ -680,4 +870,27 @@ export type EvaluationResultResponse = Evaluation;
  * Future credential
  */
 export type CredentialResultResponse = Credential;
+
+export type CreateCompanyAudition201 = {
+  company_token: string;
+};
+
+export type ApproveCompanyQuestions200 = {
+  approved: boolean;
+  snapshot_hash: string;
+};
+
+export type InviteCompanyCandidate201 = {
+  id: string;
+  invite_path: string;
+};
+
+export type SendCompanyCallback200 = {
+  marked: boolean;
+  mailto: string;
+};
+
+export type RetryHiringReport200 = {
+  queued: boolean;
+};
 

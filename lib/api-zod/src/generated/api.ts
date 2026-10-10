@@ -8,6 +8,257 @@
 import * as zod from 'zod';
 
 
+export const createCompanyAuditionBodyCompanyMax = 120;
+
+export const createCompanyAuditionBodyRoleMax = 160;
+
+export const createCompanyAuditionBodyJobDescriptionMin = 10;
+export const createCompanyAuditionBodyJobDescriptionMax = 8000;
+
+
+
+export const CreateCompanyAuditionBody = zod.object({
+  "company": zod.string().min(1).max(createCompanyAuditionBodyCompanyMax),
+  "contact_email": zod.string().email(),
+  "role": zod.string().min(1).max(createCompanyAuditionBodyRoleMax),
+  "job_description": zod.string().min(createCompanyAuditionBodyJobDescriptionMin).max(createCompanyAuditionBodyJobDescriptionMax)
+})
+
+export const CreateCompanyAuditionResponse = zod.object({
+  "company_token": zod.string()
+})
+
+
+export const GetCompanyParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetCompanyResponse = zod.object({
+  "id": zod.string(),
+  "company": zod.string(),
+  "contact_email": zod.string(),
+  "role": zod.string(),
+  "job_description": zod.string(),
+  "approval_status": zod.enum(['draft', 'approved']),
+  "draft": zod.union([zod.object({
+  "behavioral": zod.object({
+  "requirement": zod.string(),
+  "prompt": zod.string(),
+  "reference_note": zod.string().nullish()
+}),
+  "technical": zod.object({
+  "requirement": zod.string(),
+  "prompt": zod.string(),
+  "reference_note": zod.string().nullish()
+}).and(zod.object({
+  "follow_up": zod.string()
+})),
+  "starter_code": zod.string(),
+  "language": zod.enum(['Python'])
+}),zod.null()]),
+  "snapshot_hash": zod.string().nullable(),
+  "approved_at": zod.string().nullable(),
+  "duration_seconds": zod.number().int(),
+  "candidates": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "status": zod.enum(['Invited', 'In progress', 'Scoring', 'Ready']),
+  "score": zod.number().nullable(),
+  "scoring_error": zod.string().nullable(),
+  "callback_at": zod.string().nullable(),
+  "invite_path": zod.string(),
+  "report_path": zod.string().nullable()
+}))
+})
+
+
+export const DraftCompanyQuestionsParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const DraftCompanyQuestionsBody = zod.object({
+  "draft": zod.object({
+  "behavioral": zod.object({
+  "requirement": zod.string(),
+  "prompt": zod.string(),
+  "reference_note": zod.string().nullish()
+}),
+  "technical": zod.object({
+  "requirement": zod.string(),
+  "prompt": zod.string(),
+  "reference_note": zod.string().nullish()
+}).and(zod.object({
+  "follow_up": zod.string()
+})),
+  "starter_code": zod.string(),
+  "language": zod.enum(['Python'])
+}).optional()
+})
+
+export const DraftCompanyQuestionsResponse = zod.object({
+  "behavioral": zod.object({
+  "requirement": zod.string(),
+  "prompt": zod.string(),
+  "reference_note": zod.string().nullish()
+}),
+  "technical": zod.object({
+  "requirement": zod.string(),
+  "prompt": zod.string(),
+  "reference_note": zod.string().nullish()
+}).and(zod.object({
+  "follow_up": zod.string()
+})),
+  "starter_code": zod.string(),
+  "language": zod.enum(['Python'])
+})
+
+
+export const ApproveCompanyQuestionsParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const ApproveCompanyQuestionsBody = zod.object({
+  "draft": zod.object({
+  "behavioral": zod.object({
+  "requirement": zod.string(),
+  "prompt": zod.string(),
+  "reference_note": zod.string().nullish()
+}),
+  "technical": zod.object({
+  "requirement": zod.string(),
+  "prompt": zod.string(),
+  "reference_note": zod.string().nullish()
+}).and(zod.object({
+  "follow_up": zod.string()
+})),
+  "starter_code": zod.string(),
+  "language": zod.enum(['Python'])
+}).optional()
+})
+
+export const ApproveCompanyQuestionsResponse = zod.object({
+  "approved": zod.boolean(),
+  "snapshot_hash": zod.string()
+})
+
+
+export const InviteCompanyCandidateParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const inviteCompanyCandidateBodyNameMax = 120;
+
+
+
+export const InviteCompanyCandidateBody = zod.object({
+  "name": zod.string().min(1).max(inviteCompanyCandidateBodyNameMax),
+  "email": zod.string().email()
+})
+
+export const InviteCompanyCandidateResponse = zod.object({
+  "id": zod.string(),
+  "invite_path": zod.string()
+})
+
+
+export const SendCompanyCallbackParams = zod.object({
+  "token": zod.coerce.string(),
+  "candidateId": zod.coerce.string()
+})
+
+export const SendCompanyCallbackResponse = zod.object({
+  "marked": zod.boolean(),
+  "mailto": zod.string()
+})
+
+
+export const GetHiringReportParams = zod.object({
+  "candidateId": zod.coerce.string().uuid()
+})
+
+export const getHiringReportResponseScoresItemLevelOneMax = 4;
+
+
+export const getHiringReportResponseTranscriptItemOneTimestampMsMin = 0;
+export const getHiringReportResponseTranscriptItemOneTimestampMsMax = 360000;
+
+
+
+export const GetHiringReportResponse = zod.object({
+  "status": zod.enum(['pending', 'scoring', 'ready', 'error']),
+  "error": zod.string().nullable(),
+  "candidate": zod.object({
+  "id": zod.string().uuid(),
+  "audition_id": zod.string().uuid(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "status": zod.enum(['Invited', 'In progress', 'Submitted', 'Analyzed']),
+  "created_at": zod.coerce.date()
+}),
+  "company": zod.string(),
+  "role": zod.string(),
+  "duration_seconds": zod.number().int(),
+  "overall_score": zod.number().nullable(),
+  "recommendation": zod.union([zod.literal('Advance'),zod.literal('Hold'),zod.literal('Not now'),zod.literal(null)]).nullable(),
+  "reasoning": zod.string(),
+  "final_code": zod.string(),
+  "vision_error": zod.string().nullable(),
+  "transcript_missing": zod.boolean(),
+  "scores": zod.array(zod.object({
+  "requirement": zod.string(),
+  "level": zod.union([zod.number().int().min(1).max(getHiringReportResponseScoresItemLevelOneMax),zod.enum(['not_covered'])]),
+  "rationale": zod.string(),
+  "needs_review": zod.boolean(),
+  "quotes": zod.array(zod.object({
+  "source": zod.enum(['transcript', 'code']),
+  "quote": zod.string(),
+  "timestamp_ms": zod.number().int().nullable(),
+  "verified": zod.boolean()
+}))
+})),
+  "timeline": zod.array(zod.object({
+  "screenshot_id": zod.string(),
+  "timestamp_ms": zod.number().int(),
+  "description": zod.string()
+})),
+  "transcript": zod.array(zod.object({
+  "sequence": zod.number().int().min(1),
+  "timestamp_ms": zod.number().int().min(getHiringReportResponseTranscriptItemOneTimestampMsMin).max(getHiringReportResponseTranscriptItemOneTimestampMsMax).describe('Milliseconds elapsed since server_start_time, not an absolute clock time'),
+  "speaker": zod.enum(['candidate', 'interviewer']),
+  "text": zod.string()
+}).and(zod.object({
+  "id": zod.string().uuid(),
+  "session_id": zod.string().uuid(),
+  "is_app_message": zod.boolean().describe('App controls and updates are never candidate scoring evidence'),
+  "origin": zod.enum(['app', 'elevenlabs'])
+}))),
+  "integrity_flags": zod.array(zod.object({
+  "id": zod.string(),
+  "timestamp_ms": zod.number().int(),
+  "type": zod.string(),
+  "details": zod.record(zod.string(), zod.unknown())
+}))
+})
+
+
+export const RetryHiringReportParams = zod.object({
+  "candidateId": zod.coerce.string().uuid()
+})
+
+export const RetryHiringReportResponse = zod.object({
+  "queued": zod.boolean()
+})
+
+
+export const GetReviewScreenshotParams = zod.object({
+  "candidateId": zod.coerce.string().uuid(),
+  "screenshotId": zod.coerce.string().uuid()
+})
+
+export const GetReviewScreenshotResponse = zod.unknown()
+
+
 /**
  * Candidate-scoped opaque invite token in Authorization Bearer header; never a provider API key.
  */
@@ -15,6 +266,9 @@ export const getCandidateRoomResponseScreenshotCountMin = 0;
 
 export const getCandidateRoomResponseLastSnapshotMsMin = 0;
 export const getCandidateRoomResponseLastSnapshotMsMax = 360000;
+
+export const getCandidateRoomResponseAuditionOneDurationSecondsMin = 60;
+export const getCandidateRoomResponseAuditionOneDurationSecondsMax = 360;
 
 
 
@@ -32,7 +286,7 @@ export const GetCandidateRoomResponse = zod.object({
   "role": zod.string(),
   "job_description": zod.string(),
   "editor_language": zod.string(),
-  "duration_seconds": zod.literal(360),
+  "duration_seconds": zod.number().int().min(getCandidateRoomResponseAuditionOneDurationSecondsMin).max(getCandidateRoomResponseAuditionOneDurationSecondsMax),
   "frozen_questions": zod.array(zod.object({
   "position": zod.number().int().min(1),
   "requirement": zod.string().min(1),
@@ -61,7 +315,7 @@ export const GetCandidateRoomResponse = zod.object({
   "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
   "status": zod.enum(['In progress', 'Submitted']),
   "submitted_at": zod.coerce.date().nullable(),
-  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal('conversation_ended'),zod.literal(null)]).nullable()
 }).and(zod.object({
   "server_now": zod.coerce.date(),
   "conversation_id": zod.string().nullable(),
@@ -90,7 +344,7 @@ export const StartCandidateRoomResponse = zod.object({
   "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
   "status": zod.enum(['In progress', 'Submitted']),
   "submitted_at": zod.coerce.date().nullable(),
-  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal('conversation_ended'),zod.literal(null)]).nullable()
 }).and(zod.object({
   "server_now": zod.coerce.date(),
   "conversation_id": zod.string().nullable(),
@@ -110,7 +364,7 @@ export const GetCandidateSessionResponse = zod.object({
   "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
   "status": zod.enum(['In progress', 'Submitted']),
   "submitted_at": zod.coerce.date().nullable(),
-  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal('conversation_ended'),zod.literal(null)]).nullable()
 }).and(zod.object({
   "server_now": zod.coerce.date(),
   "conversation_id": zod.string().nullable(),
@@ -151,7 +405,7 @@ export const BindCandidateConversationResponse = zod.object({
   "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
   "status": zod.enum(['In progress', 'Submitted']),
   "submitted_at": zod.coerce.date().nullable(),
-  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal('conversation_ended'),zod.literal(null)]).nullable()
 }).and(zod.object({
   "server_now": zod.coerce.date(),
   "conversation_id": zod.string().nullable(),
@@ -188,7 +442,7 @@ export const SaveCandidateSnapshotResponse = zod.object({
 })
 
 
-export const saveCandidateScreenshotPathTimestampMsMin = 180000;
+export const saveCandidateScreenshotPathTimestampMsMin = 0;
 export const saveCandidateScreenshotPathTimestampMsMax = 360000;
 export const saveCandidateScreenshotPathTimestampMsMultipleOf = 10000;
 
@@ -265,7 +519,7 @@ export const submitCandidateRoomBodyEditorContentMax = 60000;
 
 
 export const SubmitCandidateRoomBody = zod.object({
-  "reason": zod.enum(['time_limit', 'finished_early']),
+  "reason": zod.enum(['time_limit', 'finished_early', 'conversation_ended']),
   "editor_content": zod.string().max(submitCandidateRoomBodyEditorContentMax).optional().describe('Final editor state captured at submission')
 })
 
@@ -276,7 +530,7 @@ export const SubmitCandidateRoomResponse = zod.object({
   "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
   "status": zod.enum(['In progress', 'Submitted']),
   "submitted_at": zod.coerce.date().nullable(),
-  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal('conversation_ended'),zod.literal(null)]).nullable()
 }).and(zod.object({
   "server_now": zod.coerce.date(),
   "conversation_id": zod.string().nullable(),
@@ -397,6 +651,9 @@ export const HealthCheckResponse = zod.object({
 })
 
 
+export const listAuditionsResponseDurationSecondsMin = 60;
+export const listAuditionsResponseDurationSecondsMax = 360;
+
 
 
 
@@ -409,7 +666,7 @@ export const ListAuditionsResponseItem = zod.object({
   "role": zod.string(),
   "job_description": zod.string(),
   "editor_language": zod.string(),
-  "duration_seconds": zod.literal(360),
+  "duration_seconds": zod.number().int().min(listAuditionsResponseDurationSecondsMin).max(listAuditionsResponseDurationSecondsMax),
   "frozen_questions": zod.array(zod.object({
   "position": zod.number().int().min(1),
   "requirement": zod.string().min(1),
@@ -450,6 +707,9 @@ export const CreateAuditionBody = zod.object({
 })).min(createAuditionBodyFrozenQuestionsMin).max(createAuditionBodyFrozenQuestionsMax).describe('Ordered unique positions; each phase sums to 180 seconds; fixed after creation')
 })
 
+export const createAuditionResponseAuditionDurationSecondsMin = 60;
+export const createAuditionResponseAuditionDurationSecondsMax = 360;
+
 
 
 
@@ -465,7 +725,7 @@ export const CreateAuditionResponse = zod.object({
   "role": zod.string(),
   "job_description": zod.string(),
   "editor_language": zod.string(),
-  "duration_seconds": zod.literal(360),
+  "duration_seconds": zod.number().int().min(createAuditionResponseAuditionDurationSecondsMin).max(createAuditionResponseAuditionDurationSecondsMax),
   "frozen_questions": zod.array(zod.object({
   "position": zod.number().int().min(1),
   "requirement": zod.string().min(1),
@@ -485,6 +745,9 @@ export const GetAuditionParams = zod.object({
   "auditionId": zod.coerce.string().uuid()
 })
 
+export const getAuditionResponseDurationSecondsMin = 60;
+export const getAuditionResponseDurationSecondsMax = 360;
+
 
 
 
@@ -497,7 +760,7 @@ export const GetAuditionResponse = zod.object({
   "role": zod.string(),
   "job_description": zod.string(),
   "editor_language": zod.string(),
-  "duration_seconds": zod.literal(360),
+  "duration_seconds": zod.number().int().min(getAuditionResponseDurationSecondsMin).max(getAuditionResponseDurationSecondsMax),
   "frozen_questions": zod.array(zod.object({
   "position": zod.number().int().min(1),
   "requirement": zod.string().min(1),
@@ -570,6 +833,9 @@ export const ResolveInviteBody = zod.object({
   "invite_token": zod.string().min(resolveInviteBodyInviteTokenMin)
 })
 
+export const resolveInviteResponseDurationSecondsMin = 60;
+export const resolveInviteResponseDurationSecondsMax = 360;
+
 
 
 
@@ -582,7 +848,7 @@ export const ResolveInviteResponse = zod.object({
   "role": zod.string(),
   "job_description": zod.string(),
   "editor_language": zod.string(),
-  "duration_seconds": zod.literal(360),
+  "duration_seconds": zod.number().int().min(resolveInviteResponseDurationSecondsMin).max(resolveInviteResponseDurationSecondsMax),
   "frozen_questions": zod.array(zod.object({
   "position": zod.number().int().min(1),
   "requirement": zod.string().min(1),
@@ -612,7 +878,7 @@ export const StartSessionResponse = zod.object({
   "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
   "status": zod.enum(['In progress', 'Submitted']),
   "submitted_at": zod.coerce.date().nullable(),
-  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal('conversation_ended'),zod.literal(null)]).nullable()
 })
 
 
@@ -627,7 +893,7 @@ export const GetSessionResponse = zod.object({
   "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
   "status": zod.enum(['In progress', 'Submitted']),
   "submitted_at": zod.coerce.date().nullable(),
-  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal('conversation_ended'),zod.literal(null)]).nullable()
 })
 
 
@@ -836,7 +1102,7 @@ export const submitSessionBodyEditorContentMax = 60000;
 
 
 export const SubmitSessionBody = zod.object({
-  "reason": zod.enum(['time_limit', 'finished_early']),
+  "reason": zod.enum(['time_limit', 'finished_early', 'conversation_ended']),
   "editor_content": zod.string().max(submitSessionBodyEditorContentMax).optional().describe('Final editor state captured at submission')
 })
 
@@ -847,7 +1113,7 @@ export const SubmitSessionResponse = zod.object({
   "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
   "status": zod.enum(['In progress', 'Submitted']),
   "submitted_at": zod.coerce.date().nullable(),
-  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal('conversation_ended'),zod.literal(null)]).nullable()
 })
 
 

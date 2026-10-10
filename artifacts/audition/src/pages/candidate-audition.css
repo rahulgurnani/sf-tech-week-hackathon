@@ -18,11 +18,7 @@
 .candidate-audition button, .candidate-audition input, .candidate-audition textarea { font: inherit; }
 .ca-shell { display: flex; min-height: 100dvh; }
 .ca-sidebar { flex: 0 0 224px; width: 224px; padding: 23px 14px 17px; background: var(--ca-navy); color: #d4e0e9; display: flex; flex-direction: column; }
-.ca-brand { display:flex; align-items:center; gap:10px; padding:0 10px 38px; color:#fff; font-size:16px; font-weight:650; letter-spacing:-.45px; }
-.ca-brand small { display:block; margin-top:3px; color:#8da6b8; font-size:9px; font-weight:500; letter-spacing:1.35px; text-transform:uppercase; }
-.ca-mark { width:27px; height:27px; border:1px solid #547080; border-radius:9px; display:grid; place-items:center; position:relative; }
-.ca-mark:before,.ca-mark:after { content:""; position:absolute; width:13px;height:13px;border:1px solid #5bc4b7;border-radius:50%; }
-.ca-mark:after { width:4px;height:4px;background:#5bc4b7;border:0; }
+.ca-brand { display:flex; align-items:center; padding:0 10px 38px; }
 .ca-side-label { padding:0 11px; margin:5px 0 9px; color:#8298aa; font-size:9px; letter-spacing:1.1px; text-transform:uppercase; }
 .ca-side-link { display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:8px;color:#eafffc;background:rgba(86,180,173,.14);box-shadow:inset 2px 0 #4ac0b5;font-size:12px; }
 .ca-side-foot { margin-top:auto; padding:14px 10px 0; border-top:1px solid rgba(255,255,255,.12); color:#91a5b5; font-size:10px; line-height:1.55; }
@@ -43,6 +39,7 @@
 .ca-notice strong { color:#334f5e; }
 .ca-notice.error { background:#fff5f4; border-color:#f1d9d7; color:#9f4541; }
 .ca-notice.warning { background:#fff8ed; border-color:#f0dfbf; color:#87632c; }
+.ca-browser-warning { margin-bottom:14px; }
 .ca-notices { margin-bottom:12px; }
 .ca-ready-grid { display:grid; grid-template-columns:minmax(0,1.18fr) minmax(300px,.82fr); gap:16px; align-items:stretch; }
 .ca-ready-main { padding:25px 27px; }
@@ -168,13 +165,13 @@
 @keyframes ca-record { 50%{opacity:.35} }
 @keyframes ca-shimmer { to{background-position:-200% 0} }
 @media(max-width:980px) {
- .ca-sidebar{width:68px;flex-basis:68px;padding:18px 8px}.ca-brand{padding:0 10px 28px}.ca-brand>span:not(.ca-mark),.ca-side-label,.ca-side-link span,.ca-side-foot{display:none}.ca-side-link{justify-content:center;padding:11px}.ca-content{padding:22px 20px 30px}.ca-topbar{padding:0 20px}.ca-workbench{grid-template-columns:minmax(260px,.82fr) minmax(390px,1.3fr)}
+ .ca-sidebar{width:68px;flex-basis:68px;padding:18px 8px}.ca-brand{padding:0 10px 28px}.ca-brand .audition-logo-copy,.ca-side-label,.ca-side-link span,.ca-side-foot{display:none}.ca-side-link{justify-content:center;padding:11px}.ca-content{padding:22px 20px 30px}.ca-topbar{padding:0 20px}.ca-workbench{grid-template-columns:minmax(260px,.82fr) minmax(390px,1.3fr)}
 }
 @media(max-width:760px) {
  .ca-page-head{align-items:flex-start;flex-direction:column}.ca-ready-grid,.ca-workbench{grid-template-columns:1fr}.ca-ready-main{padding:22px}.ca-setup-aside{min-height:300px}.ca-left-stack{display:grid;grid-template-columns:1fr 1.05fr}.ca-voice{min-height:320px}.ca-code-frame{min-height:300px}.ca-active-top{align-items:flex-start;flex-direction:column}
 }
 @media(max-width:540px) {
- .ca-sidebar{width:52px;flex-basis:52px}.ca-brand{padding-left:4px;padding-right:4px}.ca-mark{width:28px}.ca-topbar{height:54px;padding:0 12px}.ca-content{padding:18px 12px 25px}.ca-org{gap:6px}.ca-page-head h1{font-size:19px}.ca-left-stack{grid-template-columns:1fr}.ca-voice{min-height:295px}.ca-field-grid{grid-template-columns:1fr}.ca-ready-main{padding:19px}.ca-ready-actions{align-items:stretch;flex-direction:column}.ca-ready-actions .ca-primary{width:100%}.ca-session-meta{align-items:flex-start;flex-direction:column}.ca-editor-top{align-items:flex-start;padding:12px;flex-direction:column}.ca-editor-sub{padding-left:12px;padding-right:12px}.ca-room-footer{align-items:flex-start;flex-direction:column}.ca-capture-right{font-size:9px}
+ .ca-sidebar{width:52px;flex-basis:52px}.ca-brand{padding-left:4px;padding-right:4px}.ca-topbar{height:54px;padding:0 12px}.ca-content{padding:18px 12px 25px}.ca-org{gap:6px}.ca-page-head h1{font-size:19px}.ca-left-stack{grid-template-columns:1fr}.ca-voice{min-height:295px}.ca-field-grid{grid-template-columns:1fr}.ca-ready-main{padding:19px}.ca-ready-actions{align-items:stretch;flex-direction:column}.ca-ready-actions .ca-primary{width:100%}.ca-session-meta{align-items:flex-start;flex-direction:column}.ca-editor-top{align-items:flex-start;padding:12px;flex-direction:column}.ca-editor-sub{padding-left:12px;padding-right:12px}.ca-room-footer{align-items:flex-start;flex-direction:column}.ca-capture-right{font-size:9px}
 }
 @media(prefers-reduced-motion:reduce) {
  .candidate-audition *, .candidate-audition *:before, .candidate-audition *:after { animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important; }

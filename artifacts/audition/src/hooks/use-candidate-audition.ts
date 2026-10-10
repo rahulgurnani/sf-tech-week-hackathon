@@ -7,6 +7,7 @@ import {
   type CandidateRoom, type RoomSession, type RoomCommandInput, type RoomIntegrityInput,
 } from "@workspace/api-client-react";
 import type { CandidateRoomController } from "@/lib/candidate-room-types";
+import { AUDITION_MS, AUDITION_SECONDS, TECHNICAL_START_MS, WRAP_UP_MS } from "../../../../shared/audition-config";
 
 type Task = { label: string; run: () => Promise<unknown> };
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -21,7 +22,7 @@ export function useCandidateAudition(token: string): CandidateRoomController {
   const [error, setError] = useState<string | null>(null);
   const [notices, setNotices] = useState<string[]>([]);
   const [stage, setStageState] = useState<CandidateRoomController["stage"]>("ready");
-  const [remainingSeconds, setRemaining] = useState(360);
+  const [remainingSeconds, setRemaining] = useState(AUDITION_SECONDS);
   const [screenShared, setScreenShared] = useState(false);
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
@@ -52,9 +53,10 @@ export function useCandidateAudition(token: string): CandidateRoomController {
   const speech = useRef<{ started: number; lastSound: number; checked: boolean } | null>(null);
   const vad = useRef<{ score: number; at: number } | null>(null);
   const finishContent = useRef<string | null>(null);
-  const finishReason = useRef<"time_limit" | "finished_early">("time_limit");
+  const finishReason = useRef<"time_limit" | "finished_early" | "conversation_ended">("time_limit");
   const connectedAction = useRef<(id: string) => Promise<void>>(async () => {});
   const disconnectedAction = useRef<() => void>(() => {});
+  const disconnectedSignal = useRef<(() => void) | null>(null);
   const notice = useCallback((text: string) => {
     if (alive.current) setNotices(previous => previous.includes(text) ? previous : [...previous.slice(-7), text]);
   }, []);
@@ -67,7 +69,7 @@ export function useCandidateAudition(token: string): CandidateRoomController {
   };
   const elapsed = () => {
     const current = sessionRef.current;
-    return current ? Math.max(0, Math.min(360_000,
+    return current ? Math.max(0, Math.min(AUDITION_MS,
       Date.now() + offset.current - Date.parse(current.server_start_time))) : 0;
   };
   const applySession = (value: RoomSession, sentAt = Date.now()) => {
@@ -117,7 +119,7 @@ export function useCandidateAudition(token: string): CandidateRoomController {
 
   const sendCommand = async (kind: RoomCommandInput["kind"]) => {
     const current = sessionRef.current;
-    if (!current || finished.current || elapsed() >= 360_000) return;
+    if (!current || finished.current || elapsed() >= AUDITION_MS) return;
     const body: RoomCommandInput = { command_id: crypto.randomUUID(), kind };
     const immediate = {
       technical_start: "Start technical part", wrap_up: "Wrap up",
@@ -153,7 +155,9 @@ export function useCandidateAudition(token: string): CandidateRoomController {
     if (type === "page_left" || type === "screen_share_stopped") {
       const text = type === "page_left" ? "The candidate left the audition page." : "The candidate stopped sharing their screen.";
       appTexts.current.add(text);
-      voice.current.sendContextualUpdate(text);
+      if (voice.current.status === "connected") {
+        try { voice.current.sendContextualUpdate(text); } catch { /* closing connection */ }
+      }
       void saveCandidateCommand(current.id, { kind: type, command_id: crypto.randomUUID() }, {
         ...options(), keepalive: true,
       }).catch(failure => notice(`App context could not be recorded: ${safeError(failure)}`));
@@ -162,14 +166,14 @@ export function useCandidateAudition(token: string): CandidateRoomController {
 
   const capture = async (slot: number) => {
     const current = sessionRef.current;
-    if (!current || slot < 0 || slot > 360_000) return;
+    if (!current || slot < 0 || slot > AUDITION_MS) return;
     const content = codeRef.current; // Capture NOW, never reconstruct missed earlier slots.
     void enqueue({ label: "Editor snapshot", run: async () => {
       await saveCandidateSnapshot(current.id, { timestamp_ms: slot, content }, options());
       if (alive.current) setLastSavedAt(Date.now());
     } });
     const source = video.current;
-    if (slot < 180_000 || !source || !screen.current?.getVideoTracks().some(track => track.readyState === "live")) return;
+    if (slot < TECHNICAL_START_MS || !source || !screen.current?.getVideoTracks().some(track => track.readyState === "live")) return;
     try {
       if (!source.videoWidth || !source.videoHeight) throw new Error("The shared screen has no video frame.");
       const canvas = document.createElement("canvas");
@@ -202,7 +206,7 @@ export function useCandidateAudition(token: string): CandidateRoomController {
     if (alive.current) setScreenShared(false);
   };
 
-  const finish = async (reason: "time_limit" | "finished_early") => {
+  const finish = async (reason: "time_limit" | "finished_early" | "conversation_ended") => {
     const current = sessionRef.current;
     if (!current || finishing.current || finished.current) return;
     finishing.current = true;
@@ -212,9 +216,13 @@ export function useCandidateAudition(token: string): CandidateRoomController {
     setError(null);
     try {
       // Stop microphone/conversation and the shared screen immediately at the deadline.
-      const end = voice.current.endSession();
+      const closing = voice.current.status === "connected" || voice.current.status === "connecting"
+        ? new Promise<void>(resolve => { disconnectedSignal.current = resolve; }) : Promise.resolve();
+      let end: unknown;
+      try { end = voice.current.endSession(); } catch { /* already disconnected */ }
       stopSharing();
       await Promise.resolve(end).catch(failure => notice(`Voice shutdown: ${safeError(failure)}`));
+      await Promise.race([closing, delay(3000)]);
       if (conversationId.current) {
         void bindCandidateConversation(current.id, { conversation_id: conversationId.current, ended: true }, {
           ...options(), keepalive: true,
@@ -236,12 +244,12 @@ export function useCandidateAudition(token: string): CandidateRoomController {
       }
       if (!result) throw new Error("The submission was not confirmed by the server.");
       applySession(result, sentAt);
+      finished.current = true;
+      setStage("submitted");
       const retries = failedTasks.current.splice(0);
       for (const task of retries) void enqueue(task);
       const drained = await Promise.race([queue.current.then(() => true), delay(10_000).then(() => false)]);
       if (!drained) notice("Evidence uploads are still finishing. Keep this page open until the uploads complete.");
-      finished.current = true;
-      setStage("submitted");
       if (failedTasks.current.length) notice("Some evidence could not be uploaded. The audition is submitted; no evidence has been fabricated.");
     } catch (failure) {
       if (alive.current) setError(`Submission needs retry: ${safeError(failure)} The timer cannot be restarted.`);
@@ -257,7 +265,7 @@ export function useCandidateAudition(token: string): CandidateRoomController {
     binding.current = bindCandidateConversation(current.id, { conversation_id: id }, options())
       .catch(failure => notice(`Conversation ID could not be saved yet: ${safeError(failure)}`));
     await binding.current;
-    if (finishing.current || finished.current || elapsed() >= 360_000) {
+    if (finishing.current || finished.current || elapsed() >= AUDITION_MS) {
       await voice.current.endSession();
       return;
     }
@@ -268,12 +276,14 @@ export function useCandidateAudition(token: string): CandidateRoomController {
     void sendCommand("initial_context");
   };
   disconnectedAction.current = () => {
+    disconnectedSignal.current?.();
+    disconnectedSignal.current = null;
     const current = sessionRef.current;
     if (current && conversationId.current) void bindCandidateConversation(current.id, {
       conversation_id: conversationId.current, ended: true,
     }, { ...options(), keepalive: true }).catch(failure => notice(`Conversation end could not be recorded: ${safeError(failure)}`));
     if (stageRef.current === "active" && !finishing.current && !finished.current) {
-      notice("The voice connection ended. The six-minute timer and evidence collection continue; this audition cannot be restarted.");
+      void finishAction.current("conversation_ended");
     }
   };
 
@@ -360,7 +370,7 @@ export function useCandidateAudition(token: string): CandidateRoomController {
       setStage("active");
       setRoom(await getCandidateRoom(options()));
       const connection = await getCandidateVoice(created.id, options());
-      if (elapsed() >= 360_000 || finishing.current) return;
+      if (elapsed() >= AUDITION_MS || finishing.current) return;
       voice.current.startSession({
         signedUrl: connection.signed_url, connectionType: "websocket",
         dynamicVariables: connection.dynamic_variables, userId: created.id,
@@ -379,18 +389,18 @@ export function useCandidateAudition(token: string): CandidateRoomController {
     if (!session?.id || stage !== "active") return;
     const tick = () => {
       const time = elapsed();
-      setRemaining(previous => Math.min(previous, Math.max(0, Math.ceil((360_000 - time) / 1000))));
+      setRemaining(previous => Math.min(previous, Math.max(0, Math.ceil((AUDITION_MS - time) / 1000))));
       const slot = Math.floor(time / 10_000) * 10_000;
       if (slot > lastSlot.current) {
         if (lastSlot.current >= 0 && slot - lastSlot.current > 10_000) notice("The browser delayed evidence collection while the page was inactive. Missing frames are not reconstructed.");
         lastSlot.current = slot;
         void capture(slot);
       }
-      if (time >= 360_000) {
+      if (time >= AUDITION_MS) {
         if (!autoFinishAttempted.current) { autoFinishAttempted.current = true; void finishAction.current("time_limit"); }
         return;
       }
-      for (const [threshold, kind] of [[180_000, "technical_start"], [330_000, "wrap_up"]] as const) {
+      for (const [threshold, kind] of [[TECHNICAL_START_MS, "technical_start"], [WRAP_UP_MS, "wrap_up"]] as const) {
         if (time >= threshold && !commandsSent.current.has(kind)) {
           commandsSent.current.add(kind); void sendCommand(kind);
         }
@@ -450,16 +460,18 @@ export function useCandidateAudition(token: string): CandidateRoomController {
 
   return {
     room, session, loading, error, notices, stage, remainingSeconds,
-    phase: remainingSeconds <= 180 ? "Technical" : "Behavioral",
+    phase: remainingSeconds <= AUDITION_SECONDS - TECHNICAL_START_MS / 1000 ? "Technical" : "Behavioral",
     voiceState: conversation.status === "connected" ? (conversation.isSpeaking ? "speaking" : "listening") :
       conversation.status === "connecting" ? "connecting" : "disconnected",
     screenShared, candidateName, candidateEmail, setCandidateName, setCandidateEmail,
     code, setCode: value => {
       if (value.length > 60_000) { notice("The editor limit is 60,000 characters."); return; }
-      if (stageRef.current !== "active" || finished.current || elapsed() >= 360_000) return;
+      if (stageRef.current !== "active" || finished.current || elapsed() >= AUDITION_MS) return;
       codeRef.current = value; setCodeState(value);
     },
-    onEditorKeyDown: () => voice.current.sendUserActivity(),
+    onEditorKeyDown: () => { if (voice.current.status === "connected") {
+      try { voice.current.sendUserActivity(); } catch { /* ended during this keystroke */ }
+    } },
     onEditorPaste: text => { if (text.length > 50) recordIntegrity("large_paste", text.length); },
     lastSavedAt, screenshotsSaved, liveTranscript, start,
     finishEarly: () => finishAction.current("finished_early"),

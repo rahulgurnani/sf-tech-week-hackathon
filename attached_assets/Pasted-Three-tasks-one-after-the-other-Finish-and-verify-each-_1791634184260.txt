@@ -1,0 +1,44 @@
+Three tasks, one after the other. Finish and verify each before starting the next. Keep everything else as it is.
+
+IMPORTANT: The invite you just created for Rahul must stay unused. Never open it in your own tests. Update its audition in place so it gets the new timing, company and questions below.
+
+TASK A – Demo fixes + logo
+1. Timing: shorten the audition to 2:00 total. Behavioral 0:00–1:00, technical 1:00–2:00. Send the existing "Start technical part" message to the voice agent at 1:00 and "Wrap up" at 1:45, auto-submit at 2:00. Put both durations in one config constant so we can switch back to 3+3 later. Update every UI text, test and seed that mentions six minutes (e.g. "Six-minute live voice audition", "The six-minute time limit was reached").
+2. Demo data: company "Northstar Labs" (not Google), role "Senior Software Engineer".
+3. Questions: update the seed audition and its frozen question snapshot:
+- Behavioral (exactly one question): "Tell me about a time you had to ship something under a tight deadline. What did you cut, and how did you decide?"
+- Technical, language Python. Prefill the editor with this starter code:
+def top_k_frequent(nums, k):
+    counts = {}
+    for n in nums:
+        counts[n] = counts.get(n, 0) + 1
+    return sorted(counts, key=counts.get)[:k]
+  Task text: "This function should return the k most frequent numbers, but it has a bug. Fix it, then explain the time complexity and how you would make it faster."
+  Requirement: "Return the k most frequent values, most frequent first."
+- Reference note for scoring only (never show it to the candidate, never send it to the voice agent): bug = ascending sort; fix = reverse=True or heapq.nlargest(k, counts, key=counts.get); complexity O(n + m log m), m = distinct values; faster with a heap: O(n + m log k).
+Pass the question and the task (incl. starter code) to the ElevenLabs agent through the existing dynamic variables behavioral_questions and coding_task.
+4. End sync: when the voice conversation ends (Sam says goodbye and ends the call, or the connection closes), immediately submit the session, stop the timer and show the "Your audition is complete" screen, even if seconds are left. Store the real end time. The other way round: at 2:00, end the voice session first, then submit. The timer must never keep running after the interviewer has left.
+5. Browser: if the browser is not desktop Google Chrome, show a clear warning on the invite page: "This audition works in Google Chrome on a computer. Please open the link there." Warning only, don't block.
+6. Logo: replace the current logo everywhere (sidebar, favicon, page title area) with this mark next to the wordmark "Audition" (semibold, slight negative letter-spacing) and the small tagline "Fair skill signals" below it. On dark backgrounds: white wordmark and a subtle 1px border (white, 12% opacity) around the mark. Mark SVG:
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="11" fill="#0F2E3A"/><g stroke-linecap="round" stroke-linejoin="round" stroke-width="3.2"><path d="M7.5 17.5v5" stroke="#9FD9CD"/><path d="M13 12.5v15" stroke="#E9F5F2"/><path d="M18.5 15.5v9" stroke="#E9F5F2"/><path d="M23 20.5l3.5 3.5 6-9.5" stroke="#3FD1B0"/></g></svg>
+7. Run typecheck and tests, then one short browser check with simulated media (max 10 minutes, don't wait for transcript processing).
+
+TASK B – Scoring pipeline + hiring report
+Reuse the shared Nebius client (nebius-client.ts).
+1. When a session is submitted (manually, on goodbye or at the time limit), start scoring in the background and show "Scoring…" on the report.
+2. Text scoring: send transcript + final code + frozen question snapshot (incl. the reference note) to NEBIUS_TEXT_MODEL (JSON output). Score each competency 1–4 with a short evidence quote from the transcript or code. If a competency wasn't covered, return not_covered instead of guessing. Check that every quote really appears in the transcript/code; if not, mark that score needs_review.
+3. Screen analysis: send up to 6 sampled technical-phase screenshots to NEBIUS_VISION_MODEL and produce a short factual timeline of what was on screen (editor, other apps, browser tabs, AI tools). Screen only, never faces.
+4. Integrity events (paste > 50 chars, left page, window blur, screen share stopped) appear as separate flags and never change the score.
+5. Report page using the existing design: recommendation (Advance / Hold / Not now) with 2–3 sentences of reasoning, scores with evidence, final code, screen timeline with thumbnails, integrity flags, full transcript. Label it clearly as a recommendation for a human reviewer.
+Add tests and run a full scoring pass on your latest test session.
+
+TASK C – Company flow + Callbacks dashboard
+Reuse the existing designs and the invite/session code.
+1. "New audition" form: company name, contact email, role, job description.
+2. NEBIUS_TEXT_MODEL drafts 1 behavioral question (job-relevant competency, not personality) and 1 technical task (a short buggy function to fix + one follow-up question) that fit into one minute each.
+3. The company can edit, then approve. On approve the question set is frozen (snapshot + hash) and can't be changed anymore.
+4. Add candidates (name + email) and generate a single-use invite link per candidate with a copy button.
+5. "Callbacks" dashboard: candidates with status (Invited / In progress / Scoring / Ready), score and a link to the report. "Send callback" is a human action: it marks the candidate and opens a prefilled mailto.
+No real auth needed for the demo; a simple company link is fine.
+
+When all three tasks are done, write a short summary at the end of the chat: what works, what wasn't verified, known bugs. Don't push to GitHub; Rahul will do that.
