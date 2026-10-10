@@ -1,0 +1,1 @@
+- [Audition product direction](audition-product.md) — User-stated positioning and visual direction for the candidate and hiring-manager experiences.
