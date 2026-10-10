@@ -28,7 +28,9 @@ import type {
   Candidate,
   CandidateInput,
   CandidateResultResponse,
+  CandidateRoom,
   ConnectionCheck,
+  ConversationBinding,
   CredentialConsent,
   CredentialResultResponse,
   CredentialVerification,
@@ -43,6 +45,14 @@ import type {
   IntegrityEventBatch,
   InviteInput,
   NotImplementedResponse,
+  RoomCommand,
+  RoomCommandInput,
+  RoomEvidenceResultResponse,
+  RoomIntegrityInput,
+  RoomSessionResultResponse,
+  RoomSnapshotInput,
+  RoomStartInput,
+  RoomVoice,
   Screenshot,
   ScreenshotBatch,
   SessionInput,
@@ -78,6 +88,801 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetCandidateRoomUrl = () => {
+
+
+
+
+  return `/api/candidate/room`
+}
+
+/**
+ * Candidate-scoped opaque invite token in Authorization Bearer header; never a provider API key.
+ */
+export const getCandidateRoom = async ( options?: Parameters<typeof customFetch>[1]): Promise<CandidateRoom> => {
+
+  return customFetch<CandidateRoom>(getGetCandidateRoomUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCandidateRoomQueryKey = () => {
+    return [
+    `/api/candidate/room`
+    ] as const;
+    }
+
+
+export const getGetCandidateRoomQueryOptions = <TData = Awaited<ReturnType<typeof getCandidateRoom>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCandidateRoom>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCandidateRoomQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCandidateRoom>>> = ({ signal }) => getCandidateRoom({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCandidateRoom>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCandidateRoomQueryResult = NonNullable<Awaited<ReturnType<typeof getCandidateRoom>>>
+export type GetCandidateRoomQueryError = ErrorType<unknown>
+
+
+
+export function useGetCandidateRoom<TData = Awaited<ReturnType<typeof getCandidateRoom>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCandidateRoom>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCandidateRoomQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartCandidateRoomUrl = () => {
+
+
+
+
+  return `/api/candidate/start`
+}
+
+export const startCandidateRoom = async (roomStartInput: RoomStartInput, options?: Parameters<typeof customFetch>[1]): Promise<RoomSessionResultResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomSessionResultResponse>(getStartCandidateRoomUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roomStartInput)
+  }
+);}
+
+
+
+
+
+export const getStartCandidateRoomMutationKey = () => ['startCandidateRoom'] as const;
+
+export const getStartCandidateRoomMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startCandidateRoom>>, TError,StartCandidateRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startCandidateRoom>>, TError,StartCandidateRoomMutationVariables, TContext> => {
+
+const mutationKey = getStartCandidateRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startCandidateRoom>>, StartCandidateRoomMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startCandidateRoom(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartCandidateRoomMutationResult = NonNullable<Awaited<ReturnType<typeof startCandidateRoom>>>
+    export type StartCandidateRoomMutationBody = BodyType<RoomStartInput>
+    export type StartCandidateRoomMutationError = ErrorType<unknown>
+    export type StartCandidateRoomMutationVariables = {data: BodyType<RoomStartInput>}
+
+    export const useStartCandidateRoom = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startCandidateRoom>>, TError,StartCandidateRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startCandidateRoom>>,
+        TError,
+        StartCandidateRoomMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartCandidateRoomMutationOptions(options));
+    }
+
+export const getGetCandidateSessionUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/candidate/session/${sessionId}`
+}
+
+export const getCandidateSession = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<RoomSessionResultResponse> => {
+
+  return customFetch<RoomSessionResultResponse>(getGetCandidateSessionUrl(sessionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCandidateSessionQueryKey = (sessionId: string,) => {
+    return [
+    `/api/candidate/session/${sessionId}`
+    ] as const;
+    }
+
+
+export const getGetCandidateSessionQueryOptions = <TData = Awaited<ReturnType<typeof getCandidateSession>>, TError = ErrorType<unknown>>(sessionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCandidateSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCandidateSessionQueryKey(sessionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCandidateSession>>> = ({ signal }) => getCandidateSession(sessionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sessionId !== null && sessionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCandidateSession>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCandidateSessionQueryResult = NonNullable<Awaited<ReturnType<typeof getCandidateSession>>>
+export type GetCandidateSessionQueryError = ErrorType<unknown>
+
+
+
+export function useGetCandidateSession<TData = Awaited<ReturnType<typeof getCandidateSession>>, TError = ErrorType<unknown>>(
+ sessionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCandidateSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCandidateSessionQueryOptions(sessionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCandidateVoiceUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/candidate/session/${sessionId}/voice`
+}
+
+export const getCandidateVoice = async (sessionId: string, options?: Parameters<typeof customFetch>[1]): Promise<RoomVoice> => {
+
+  return customFetch<RoomVoice>(getGetCandidateVoiceUrl(sessionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCandidateVoiceMutationKey = () => ['getCandidateVoice'] as const;
+
+export const getGetCandidateVoiceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getCandidateVoice>>, TError,GetCandidateVoiceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getCandidateVoice>>, TError,GetCandidateVoiceMutationVariables, TContext> => {
+
+const mutationKey = getGetCandidateVoiceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getCandidateVoice>>, GetCandidateVoiceMutationVariables> = (props) => {
+          const {sessionId} = props ?? {};
+
+          return  getCandidateVoice(sessionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetCandidateVoiceMutationResult = NonNullable<Awaited<ReturnType<typeof getCandidateVoice>>>
+
+    export type GetCandidateVoiceMutationError = ErrorType<unknown>
+    export type GetCandidateVoiceMutationVariables = {sessionId: string}
+
+    export const useGetCandidateVoice = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getCandidateVoice>>, TError,GetCandidateVoiceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof getCandidateVoice>>,
+        TError,
+        GetCandidateVoiceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGetCandidateVoiceMutationOptions(options));
+    }
+
+export const getBindCandidateConversationUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/candidate/session/${sessionId}/conversation`
+}
+
+export const bindCandidateConversation = async (sessionId: string,
+    conversationBinding: ConversationBinding, options?: Parameters<typeof customFetch>[1]): Promise<RoomSessionResultResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomSessionResultResponse>(getBindCandidateConversationUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(conversationBinding)
+  }
+);}
+
+
+
+
+
+export const getBindCandidateConversationMutationKey = () => ['bindCandidateConversation'] as const;
+
+export const getBindCandidateConversationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bindCandidateConversation>>, TError,BindCandidateConversationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bindCandidateConversation>>, TError,BindCandidateConversationMutationVariables, TContext> => {
+
+const mutationKey = getBindCandidateConversationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bindCandidateConversation>>, BindCandidateConversationMutationVariables> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  bindCandidateConversation(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BindCandidateConversationMutationResult = NonNullable<Awaited<ReturnType<typeof bindCandidateConversation>>>
+    export type BindCandidateConversationMutationBody = BodyType<ConversationBinding>
+    export type BindCandidateConversationMutationError = ErrorType<unknown>
+    export type BindCandidateConversationMutationVariables = {sessionId: string;data: BodyType<ConversationBinding>}
+
+    export const useBindCandidateConversation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bindCandidateConversation>>, TError,BindCandidateConversationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bindCandidateConversation>>,
+        TError,
+        BindCandidateConversationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBindCandidateConversationMutationOptions(options));
+    }
+
+export const getSaveCandidateSnapshotUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/candidate/session/${sessionId}/snapshots`
+}
+
+export const saveCandidateSnapshot = async (sessionId: string,
+    roomSnapshotInput: RoomSnapshotInput, options?: Parameters<typeof customFetch>[1]): Promise<RoomEvidenceResultResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomEvidenceResultResponse>(getSaveCandidateSnapshotUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roomSnapshotInput)
+  }
+);}
+
+
+
+
+
+export const getSaveCandidateSnapshotMutationKey = () => ['saveCandidateSnapshot'] as const;
+
+export const getSaveCandidateSnapshotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCandidateSnapshot>>, TError,SaveCandidateSnapshotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveCandidateSnapshot>>, TError,SaveCandidateSnapshotMutationVariables, TContext> => {
+
+const mutationKey = getSaveCandidateSnapshotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveCandidateSnapshot>>, SaveCandidateSnapshotMutationVariables> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  saveCandidateSnapshot(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveCandidateSnapshotMutationResult = NonNullable<Awaited<ReturnType<typeof saveCandidateSnapshot>>>
+    export type SaveCandidateSnapshotMutationBody = BodyType<RoomSnapshotInput>
+    export type SaveCandidateSnapshotMutationError = ErrorType<unknown>
+    export type SaveCandidateSnapshotMutationVariables = {sessionId: string;data: BodyType<RoomSnapshotInput>}
+
+    export const useSaveCandidateSnapshot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCandidateSnapshot>>, TError,SaveCandidateSnapshotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveCandidateSnapshot>>,
+        TError,
+        SaveCandidateSnapshotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveCandidateSnapshotMutationOptions(options));
+    }
+
+export const getSaveCandidateScreenshotUrl = (sessionId: string,
+    timestampMs: number,) => {
+
+
+
+
+  return `/api/candidate/session/${sessionId}/screenshots/${timestampMs}`
+}
+
+export const saveCandidateScreenshot = async (sessionId: string,
+    timestampMs: number,
+    saveCandidateScreenshotBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<RoomEvidenceResultResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomEvidenceResultResponse>(getSaveCandidateScreenshotUrl(sessionId,timestampMs),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'image/jpeg', ...getHeaders(options?.headers) },
+    body: saveCandidateScreenshotBody
+  }
+);}
+
+
+
+
+
+export const getSaveCandidateScreenshotMutationKey = () => ['saveCandidateScreenshot'] as const;
+
+export const getSaveCandidateScreenshotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCandidateScreenshot>>, TError,SaveCandidateScreenshotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveCandidateScreenshot>>, TError,SaveCandidateScreenshotMutationVariables, TContext> => {
+
+const mutationKey = getSaveCandidateScreenshotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveCandidateScreenshot>>, SaveCandidateScreenshotMutationVariables> = (props) => {
+          const {sessionId,timestampMs,data} = props ?? {};
+
+          return  saveCandidateScreenshot(sessionId,timestampMs,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveCandidateScreenshotMutationResult = NonNullable<Awaited<ReturnType<typeof saveCandidateScreenshot>>>
+    export type SaveCandidateScreenshotMutationBody = BodyType<Blob>
+    export type SaveCandidateScreenshotMutationError = ErrorType<unknown>
+    export type SaveCandidateScreenshotMutationVariables = {sessionId: string;timestampMs: number;data: BodyType<Blob>}
+
+    export const useSaveCandidateScreenshot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCandidateScreenshot>>, TError,SaveCandidateScreenshotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveCandidateScreenshot>>,
+        TError,
+        SaveCandidateScreenshotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveCandidateScreenshotMutationOptions(options));
+    }
+
+export const getSaveCandidateIntegrityUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/candidate/session/${sessionId}/integrity`
+}
+
+export const saveCandidateIntegrity = async (sessionId: string,
+    roomIntegrityInput: RoomIntegrityInput, options?: Parameters<typeof customFetch>[1]): Promise<RoomEvidenceResultResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomEvidenceResultResponse>(getSaveCandidateIntegrityUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roomIntegrityInput)
+  }
+);}
+
+
+
+
+
+export const getSaveCandidateIntegrityMutationKey = () => ['saveCandidateIntegrity'] as const;
+
+export const getSaveCandidateIntegrityMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCandidateIntegrity>>, TError,SaveCandidateIntegrityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveCandidateIntegrity>>, TError,SaveCandidateIntegrityMutationVariables, TContext> => {
+
+const mutationKey = getSaveCandidateIntegrityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveCandidateIntegrity>>, SaveCandidateIntegrityMutationVariables> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  saveCandidateIntegrity(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveCandidateIntegrityMutationResult = NonNullable<Awaited<ReturnType<typeof saveCandidateIntegrity>>>
+    export type SaveCandidateIntegrityMutationBody = BodyType<RoomIntegrityInput>
+    export type SaveCandidateIntegrityMutationError = ErrorType<unknown>
+    export type SaveCandidateIntegrityMutationVariables = {sessionId: string;data: BodyType<RoomIntegrityInput>}
+
+    export const useSaveCandidateIntegrity = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCandidateIntegrity>>, TError,SaveCandidateIntegrityMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveCandidateIntegrity>>,
+        TError,
+        SaveCandidateIntegrityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveCandidateIntegrityMutationOptions(options));
+    }
+
+export const getSaveCandidateCommandUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/candidate/session/${sessionId}/commands`
+}
+
+export const saveCandidateCommand = async (sessionId: string,
+    roomCommandInput: RoomCommandInput, options?: Parameters<typeof customFetch>[1]): Promise<RoomCommand> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomCommand>(getSaveCandidateCommandUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(roomCommandInput)
+  }
+);}
+
+
+
+
+
+export const getSaveCandidateCommandMutationKey = () => ['saveCandidateCommand'] as const;
+
+export const getSaveCandidateCommandMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCandidateCommand>>, TError,SaveCandidateCommandMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveCandidateCommand>>, TError,SaveCandidateCommandMutationVariables, TContext> => {
+
+const mutationKey = getSaveCandidateCommandMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveCandidateCommand>>, SaveCandidateCommandMutationVariables> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  saveCandidateCommand(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveCandidateCommandMutationResult = NonNullable<Awaited<ReturnType<typeof saveCandidateCommand>>>
+    export type SaveCandidateCommandMutationBody = BodyType<RoomCommandInput>
+    export type SaveCandidateCommandMutationError = ErrorType<unknown>
+    export type SaveCandidateCommandMutationVariables = {sessionId: string;data: BodyType<RoomCommandInput>}
+
+    export const useSaveCandidateCommand = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCandidateCommand>>, TError,SaveCandidateCommandMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveCandidateCommand>>,
+        TError,
+        SaveCandidateCommandMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveCandidateCommandMutationOptions(options));
+    }
+
+export const getSubmitCandidateRoomUrl = (sessionId: string,) => {
+
+
+
+
+  return `/api/candidate/session/${sessionId}/submit`
+}
+
+export const submitCandidateRoom = async (sessionId: string,
+    sessionSubmission: SessionSubmission, options?: Parameters<typeof customFetch>[1]): Promise<RoomSessionResultResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RoomSessionResultResponse>(getSubmitCandidateRoomUrl(sessionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sessionSubmission)
+  }
+);}
+
+
+
+
+
+export const getSubmitCandidateRoomMutationKey = () => ['submitCandidateRoom'] as const;
+
+export const getSubmitCandidateRoomMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitCandidateRoom>>, TError,SubmitCandidateRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitCandidateRoom>>, TError,SubmitCandidateRoomMutationVariables, TContext> => {
+
+const mutationKey = getSubmitCandidateRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitCandidateRoom>>, SubmitCandidateRoomMutationVariables> = (props) => {
+          const {sessionId,data} = props ?? {};
+
+          return  submitCandidateRoom(sessionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitCandidateRoomMutationResult = NonNullable<Awaited<ReturnType<typeof submitCandidateRoom>>>
+    export type SubmitCandidateRoomMutationBody = BodyType<SessionSubmission>
+    export type SubmitCandidateRoomMutationError = ErrorType<unknown>
+    export type SubmitCandidateRoomMutationVariables = {sessionId: string;data: BodyType<SessionSubmission>}
+
+    export const useSubmitCandidateRoom = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitCandidateRoom>>, TError,SubmitCandidateRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitCandidateRoom>>,
+        TError,
+        SubmitCandidateRoomMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSubmitCandidateRoomMutationOptions(options));
+    }
 
 export const getGetAdminHealthUrl = () => {
 

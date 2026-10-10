@@ -12,6 +12,114 @@ tags:
   - { name: evaluations, description: Requirement-level assessment }
   - { name: credentials, description: Signed session credentials }
 paths:
+  /candidate/room:
+    get:
+      operationId: getCandidateRoom
+      description: Candidate-scoped opaque invite token in Authorization Bearer header; never a provider API key.
+      responses:
+        "200":
+          description: Frozen audition, candidate and any existing irreversible session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CandidateRoom" }
+  /candidate/start:
+    post:
+      operationId: startCandidateRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomStartInput" }
+      responses:
+        "200": { $ref: "#/components/responses/RoomSessionResult" }
+  /candidate/session/{sessionId}:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    get:
+      operationId: getCandidateSession
+      responses:
+        "200": { $ref: "#/components/responses/RoomSessionResult" }
+  /candidate/session/{sessionId}/voice:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    post:
+      operationId: getCandidateVoice
+      responses:
+        "200":
+          description: Candidate-authorized signed URL and frozen dynamic variables, no provider key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomVoice" }
+  /candidate/session/{sessionId}/conversation:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    post:
+      operationId: bindCandidateConversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConversationBinding" }
+      responses:
+        "200": { $ref: "#/components/responses/RoomSessionResult" }
+  /candidate/session/{sessionId}/snapshots:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    post:
+      operationId: saveCandidateSnapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomSnapshotInput" }
+      responses:
+        "200": { $ref: "#/components/responses/RoomEvidenceResult" }
+  /candidate/session/{sessionId}/screenshots/{timestampMs}:
+    parameters:
+      - { $ref: "#/components/parameters/SessionId" }
+      - { name: timestampMs, in: path, required: true, schema: { type: integer, minimum: 180000, maximum: 360000, multipleOf: 10000 } }
+    post:
+      operationId: saveCandidateScreenshot
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema: { type: string, format: binary }
+      responses:
+        "200": { $ref: "#/components/responses/RoomEvidenceResult" }
+  /candidate/session/{sessionId}/integrity:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    post:
+      operationId: saveCandidateIntegrity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomIntegrityInput" }
+      responses:
+        "200": { $ref: "#/components/responses/RoomEvidenceResult" }
+  /candidate/session/{sessionId}/commands:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    post:
+      operationId: saveCandidateCommand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomCommandInput" }
+      responses:
+        "200":
+          description: App-only control text excluded from candidate scoring
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomCommand" }
+  /candidate/session/{sessionId}/submit:
+    parameters: [{ $ref: "#/components/parameters/SessionId" }]
+    post:
+      operationId: submitCandidateRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SessionSubmission" }
+      responses:
+        "200": { $ref: "#/components/responses/RoomSessionResult" }
   /admin/health:
     get:
       operationId: getAdminHealth
@@ -309,6 +417,16 @@ components:
     AuditionId: { name: auditionId, in: path, required: true, schema: { type: string, format: uuid } }
     SessionId: { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
   responses:
+    RoomSessionResult:
+      description: Server-authoritative session state and clock
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/RoomSession" }
+    RoomEvidenceResult:
+      description: Idempotently stored private evidence
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/RoomEvidence" }
     DiagnosticsDisabled:
       description: Invalid test, unavailable audio, or diagnostics disabled outside development
       content:
@@ -345,6 +463,90 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Credential" }
   schemas:
+    CandidateRoom:
+      type: object
+      required: [audition, candidate, session]
+      properties:
+        audition:
+          allOf:
+            - { $ref: "#/components/schemas/Audition" }
+            - type: object
+              required: [company]
+              properties:
+                company: { type: string }
+        candidate: { $ref: "#/components/schemas/Candidate" }
+        session:
+          anyOf:
+            - { $ref: "#/components/schemas/RoomSession" }
+            - { type: "null" }
+    RoomSession:
+      allOf:
+        - { $ref: "#/components/schemas/Session" }
+        - type: object
+          required: [server_now, conversation_id, transcript_status, transcript_error]
+          properties:
+            server_now: { type: string, format: date-time }
+            conversation_id: { type: [string, "null"] }
+            transcript_status: { type: string, enum: [not_started, pending, ready, error] }
+            transcript_error: { type: [string, "null"] }
+    RoomStartInput:
+      type: object
+      additionalProperties: false
+      required: [screen_surface, candidate_name, candidate_email]
+      properties:
+        screen_surface: { type: string, enum: [monitor] }
+        candidate_name: { type: string, minLength: 1, maxLength: 120 }
+        candidate_email: { type: string, format: email, maxLength: 254 }
+    RoomVoice:
+      type: object
+      required: [signed_url, dynamic_variables]
+      properties:
+        signed_url: { type: string }
+        dynamic_variables:
+          type: object
+          additionalProperties: { type: string }
+    ConversationBinding:
+      type: object
+      additionalProperties: false
+      required: [conversation_id]
+      properties:
+        conversation_id: { type: string, pattern: "^conv_[A-Za-z0-9_-]+$", maxLength: 150 }
+    RoomSnapshotInput:
+      type: object
+      additionalProperties: false
+      required: [timestamp_ms, content]
+      properties:
+        timestamp_ms: { type: integer, minimum: 0, maximum: 360000, multipleOf: 10000 }
+        content: { type: string, maxLength: 60000 }
+    RoomIntegrityInput:
+      type: object
+      additionalProperties: false
+      required: [event_id, timestamp_ms, type]
+      properties:
+        event_id: { type: string, format: uuid }
+        timestamp_ms: { $ref: "#/components/schemas/TimestampMs" }
+        type: { type: string, enum: [page_left, window_blur, large_paste, screen_share_stopped] }
+        character_count: { type: integer, minimum: 51, maximum: 1000000 }
+    RoomCommandInput:
+      type: object
+      additionalProperties: false
+      required: [command_id, kind]
+      properties:
+        command_id: { type: string, format: uuid }
+        kind: { type: string, enum: [initial_context, technical_start, wrap_up, time_check, page_left, screen_share_stopped] }
+    RoomCommand:
+      type: object
+      required: [text, delivery, is_app_message]
+      properties:
+        text: { type: string }
+        delivery: { type: string, enum: [user_message, contextual_update] }
+        is_app_message: { type: boolean, enum: [true] }
+    RoomEvidence:
+      type: object
+      required: [saved, timestamp_ms]
+      properties:
+        saved: { type: boolean }
+        timestamp_ms: { $ref: "#/components/schemas/TimestampMs" }
     AdminHealth:
       type: object
       required: [development_only, checks]

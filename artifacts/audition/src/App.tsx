@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import AdminHealthPage from '@/pages/admin-health';
+import CandidateAudition from '@/pages/candidate-audition';
 import {
   Redirect,
   Route,
@@ -23,6 +24,7 @@ function Router() {
       <Switch>
         <Route path="/" component={() => <Redirect to="/admin/health" />} />
         <Route path="/admin/health" component={AdminHealthPage} />
+        <Route path="/invite/:token" component={CandidateAudition} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

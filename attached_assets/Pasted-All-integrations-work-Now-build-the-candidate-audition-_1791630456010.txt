@@ -1,0 +1,41 @@
+All integrations work. Now build the candidate audition room on the existing
+Audition room design, using the data model in docs/api.md.
+
+Shared Nebius client: every Nebius call (text and vision) uses max_tokens 1024 and
+chat_template_kwargs { enable_thinking: false }, like the health check.
+
+Voice interviewer:
+- On the server, fetch a signed URL for ELEVENLABS_AGENT_ID so the API key never
+  reaches the browser.
+- In the browser, start the conversation with the @elevenlabs/react SDK and pass
+  these dynamic variables from the audition: candidate_name, company, role,
+  behavioral_questions (the frozen behavioral questions as one numbered text),
+  coding_task (the frozen technical task).
+- Show the voice orb state from the SDK: speaking or listening.
+
+Standardized session:
+- Before starting, require full-screen sharing with getDisplayMedia and refuse to
+  start unless displaySurface is "monitor".
+- On Start, call the API to lock the session and store the server start time. The
+  timer counts down 6:00 from the server start time and cannot be paused.
+- At 3:00 send the agent the user message "Start technical part" and switch the
+  phase indicator to Technical. At 5:30 send "Wrap up". At 6:00 end the
+  conversation and submit automatically.
+- If the candidate speaks for more than 75 seconds in one turn, send "Time check:
+  politely cut in and move on."
+- Mark all app messages so they are excluded from scoring.
+
+Evidence:
+- Save the editor content every 10 seconds. Call sendUserActivity on every
+  keystroke so the agent stays quiet while the candidate types.
+- During the technical part, capture a screenshot of the shared screen every 10
+  seconds and upload it with its timestamp.
+- Log with timestamps: page left, window blur, paste over 50 characters, screen
+  sharing stopped. On page left or sharing stopped, also send sendContextualUpdate
+  to the agent.
+- After the call ends, store the ElevenLabs conversation ID and fetch the transcript
+  from the ElevenLabs API on the server.
+
+For testing, create one seeded audition with an invite link I can open myself, using
+these values: company Google, role Software Engineer, two behavioral questions and
+one short coding task.

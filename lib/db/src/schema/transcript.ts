@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, uuid, text, integer, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, boolean, unique, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { sessionsTable } from "./sessions";
 import { transcriptSpeaker } from "./enums";
@@ -11,6 +11,10 @@ export const transcriptEntriesTable = pgTable("transcript_entries", {
   timestampMs: integer("timestamp_ms").notNull(),
   speaker: transcriptSpeaker("speaker").notNull(),
   text: text("text").notNull(),
+  isAppMessage: boolean("is_app_message").notNull().default(false),
+  origin: text("origin", { enum: ["app", "elevenlabs"] }).notNull().default("elevenlabs"),
+  commandId: uuid("command_id").unique(),
+  commandKind: text("command_kind"),
 }, (t) => [
   unique("transcript_sequence_unique").on(t.sessionId, t.sequence),
   check("transcript_sequence_positive", sql`${t.sequence} >= 1`),

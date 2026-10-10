@@ -4,6 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 
 export const auditionsTable = pgTable("auditions", {
   id: uuid("id").primaryKey().defaultRandom(),
+  company: text("company").notNull().default("Company"),
   role: text("role").notNull(),
   jobDescription: text("job_description").notNull(),
   editorLanguage: text("editor_language").notNull(),

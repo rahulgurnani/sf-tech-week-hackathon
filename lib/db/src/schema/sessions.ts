@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, uuid, timestamp, text, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, timestamp, text, integer, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { candidatesTable } from "./candidates";
 import { sessionStatus } from "./enums";
@@ -11,6 +11,12 @@ export const sessionsTable = pgTable("sessions", {
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
   finishReason: text("finish_reason", { enum: ["time_limit", "finished_early"] }),
   status: sessionStatus("status").notNull().default("In progress"),
+  conversationId: text("conversation_id").unique(),
+  conversationStartOffsetMs: integer("conversation_start_offset_ms"),
+  transcriptStatus: text("transcript_status", { enum: ["not_started", "pending", "ready", "error"] }).notNull().default("not_started"),
+  transcriptError: text("transcript_error"),
+  transcriptAttempts: integer("transcript_attempts").notNull().default(0),
+  lastTranscriptAttemptAt: timestamp("last_transcript_attempt_at", { withTimezone: true }),
 }, (t) => [
   check("session_submission_consistent", sql`(${t.status} = 'In progress' AND ${t.submittedAt} IS NULL AND ${t.finishReason} IS NULL) OR (${t.status} = 'Submitted' AND ${t.submittedAt} IS NOT NULL AND ${t.finishReason} IS NOT NULL AND ${t.finishReason} IN ('time_limit', 'finished_early'))`),
   check("session_submission_window", sql`${t.submittedAt} IS NULL OR (${t.submittedAt} >= ${t.serverStartTime} AND ${t.submittedAt} <= ${t.serverStartTime} + interval '6 minutes')`),

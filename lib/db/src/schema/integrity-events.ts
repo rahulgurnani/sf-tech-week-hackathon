@@ -6,6 +6,7 @@ import { integrityEventType } from "./enums";
 
 export const integrityEventsTable = pgTable("integrity_events", {
   id: uuid("id").primaryKey().defaultRandom(),
+  eventId: uuid("event_id").unique(),
   sessionId: uuid("session_id").notNull().references(() => sessionsTable.id),
   sequence: integer("sequence").notNull(),
   timestampMs: integer("timestamp_ms").notNull(),

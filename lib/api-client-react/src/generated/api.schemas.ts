@@ -5,6 +5,237 @@
  * Audition foundation and development-only integration diagnostics. Audition domain endpoints remain 501 stubs.
  * OpenAPI spec version: 0.2.0
  */
+export type AuditionDurationSeconds = typeof AuditionDurationSeconds[keyof typeof AuditionDurationSeconds];
+
+
+export const AuditionDurationSeconds = {
+  NUMBER_360: 360,
+} as const;
+
+export type QuestionInputPhase = typeof QuestionInputPhase[keyof typeof QuestionInputPhase];
+
+
+export const QuestionInputPhase = {
+  Behavioral: 'Behavioral',
+  Technical: 'Technical',
+} as const;
+
+export interface QuestionInput {
+  /** @minimum 1 */
+  position: number;
+  /** @minLength 1 */
+  requirement: string;
+  /** @minLength 1 */
+  prompt: string;
+  phase: QuestionInputPhase;
+  /**
+     * @minimum 1
+     * @maximum 180
+     */
+  time_limit_seconds: number;
+}
+
+export type FrozenQuestion = QuestionInput & {
+  id: string;
+};
+
+export interface Audition {
+  id: string;
+  role: string;
+  job_description: string;
+  editor_language: string;
+  duration_seconds: AuditionDurationSeconds;
+  frozen_questions: FrozenQuestion[];
+  created_at: string;
+}
+
+export type CandidateRoomAudition = Audition & {
+  company: string;
+};
+
+export type CandidateStatus = typeof CandidateStatus[keyof typeof CandidateStatus];
+
+
+export const CandidateStatus = {
+  Invited: 'Invited',
+  In_progress: 'In progress',
+  Submitted: 'Submitted',
+  Analyzed: 'Analyzed',
+} as const;
+
+export interface Candidate {
+  id: string;
+  audition_id: string;
+  name: string;
+  email: string;
+  status: CandidateStatus;
+  created_at: string;
+}
+
+export type SessionStatus = typeof SessionStatus[keyof typeof SessionStatus];
+
+
+export const SessionStatus = {
+  In_progress: 'In progress',
+  Submitted: 'Submitted',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SessionFinishReason = typeof SessionFinishReason[keyof typeof SessionFinishReason] | null;
+
+
+export const SessionFinishReason = {
+  time_limit: 'time_limit',
+  finished_early: 'finished_early',
+} as const;
+
+export interface Session {
+  id: string;
+  candidate_id: string;
+  server_start_time: string;
+  /** Derived as server_start_time plus 360 seconds */
+  deadline_at: string;
+  status: SessionStatus;
+  /** @nullable */
+  submitted_at: string | null;
+  /** @nullable */
+  finish_reason: SessionFinishReason;
+}
+
+export type RoomSessionTranscriptStatus = typeof RoomSessionTranscriptStatus[keyof typeof RoomSessionTranscriptStatus];
+
+
+export const RoomSessionTranscriptStatus = {
+  not_started: 'not_started',
+  pending: 'pending',
+  ready: 'ready',
+  error: 'error',
+} as const;
+
+export type RoomSession = Session & ({
+  server_now: string;
+  /** @nullable */
+  conversation_id: string | null;
+  transcript_status: RoomSessionTranscriptStatus;
+  /** @nullable */
+  transcript_error: string | null;
+});
+
+export interface CandidateRoom {
+  audition: CandidateRoomAudition;
+  candidate: Candidate;
+  session: RoomSession | null;
+}
+
+export type RoomStartInputScreenSurface = typeof RoomStartInputScreenSurface[keyof typeof RoomStartInputScreenSurface];
+
+
+export const RoomStartInputScreenSurface = {
+  monitor: 'monitor',
+} as const;
+
+export interface RoomStartInput {
+  screen_surface: RoomStartInputScreenSurface;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  candidate_name: string;
+  /** @maxLength 254 */
+  candidate_email: string;
+}
+
+export type RoomVoiceDynamicVariables = {[key: string]: string};
+
+export interface RoomVoice {
+  signed_url: string;
+  dynamic_variables: RoomVoiceDynamicVariables;
+}
+
+export interface ConversationBinding {
+  /**
+     * @maxLength 150
+     * @pattern ^conv_[A-Za-z0-9_-]+$
+     */
+  conversation_id: string;
+}
+
+export interface RoomSnapshotInput {
+  /**
+     * @minimum 0
+     * @maximum 360000
+     */
+  timestamp_ms: number;
+  /** @maxLength 60000 */
+  content: string;
+}
+
+export type RoomIntegrityInputType = typeof RoomIntegrityInputType[keyof typeof RoomIntegrityInputType];
+
+
+export const RoomIntegrityInputType = {
+  page_left: 'page_left',
+  window_blur: 'window_blur',
+  large_paste: 'large_paste',
+  screen_share_stopped: 'screen_share_stopped',
+} as const;
+
+/**
+ * Milliseconds elapsed since server_start_time, not an absolute clock time
+ * @minimum 0
+ * @maximum 360000
+ */
+export type TimestampMs = number;
+
+export interface RoomIntegrityInput {
+  event_id: string;
+  timestamp_ms: TimestampMs;
+  type: RoomIntegrityInputType;
+  /**
+     * @minimum 51
+     * @maximum 1000000
+     */
+  character_count?: number;
+}
+
+export type RoomCommandInputKind = typeof RoomCommandInputKind[keyof typeof RoomCommandInputKind];
+
+
+export const RoomCommandInputKind = {
+  initial_context: 'initial_context',
+  technical_start: 'technical_start',
+  wrap_up: 'wrap_up',
+  time_check: 'time_check',
+  page_left: 'page_left',
+  screen_share_stopped: 'screen_share_stopped',
+} as const;
+
+export interface RoomCommandInput {
+  command_id: string;
+  kind: RoomCommandInputKind;
+}
+
+export type RoomCommandDelivery = typeof RoomCommandDelivery[keyof typeof RoomCommandDelivery];
+
+
+export const RoomCommandDelivery = {
+  user_message: 'user_message',
+  contextual_update: 'contextual_update',
+} as const;
+
+export interface RoomCommand {
+  text: string;
+  delivery: RoomCommandDelivery;
+  is_app_message: true;
+}
+
+export interface RoomEvidence {
+  saved: boolean;
+  timestamp_ms: TimestampMs;
+}
+
 export type ConnectionCheckId = typeof ConnectionCheckId[keyof typeof ConnectionCheckId];
 
 
@@ -132,40 +363,6 @@ export interface ApiError {
   message: string;
 }
 
-/**
- * Milliseconds elapsed since server_start_time, not an absolute clock time
- * @minimum 0
- * @maximum 360000
- */
-export type TimestampMs = number;
-
-export type QuestionInputPhase = typeof QuestionInputPhase[keyof typeof QuestionInputPhase];
-
-
-export const QuestionInputPhase = {
-  Behavioral: 'Behavioral',
-  Technical: 'Technical',
-} as const;
-
-export interface QuestionInput {
-  /** @minimum 1 */
-  position: number;
-  /** @minLength 1 */
-  requirement: string;
-  /** @minLength 1 */
-  prompt: string;
-  phase: QuestionInputPhase;
-  /**
-     * @minimum 1
-     * @maximum 180
-     */
-  time_limit_seconds: number;
-}
-
-export type FrozenQuestion = QuestionInput & {
-  id: string;
-};
-
 export interface AuditionInput {
   /** @minLength 1 */
   role: string;
@@ -179,23 +376,6 @@ export interface AuditionInput {
      * @maxItems 360
      */
   frozen_questions: QuestionInput[];
-}
-
-export type AuditionDurationSeconds = typeof AuditionDurationSeconds[keyof typeof AuditionDurationSeconds];
-
-
-export const AuditionDurationSeconds = {
-  NUMBER_360: 360,
-} as const;
-
-export interface Audition {
-  id: string;
-  role: string;
-  job_description: string;
-  editor_language: string;
-  duration_seconds: AuditionDurationSeconds;
-  frozen_questions: FrozenQuestion[];
-  created_at: string;
 }
 
 export interface AuditionInvitation {
@@ -213,25 +393,6 @@ export interface CandidateInput {
   email: string;
 }
 
-export type CandidateStatus = typeof CandidateStatus[keyof typeof CandidateStatus];
-
-
-export const CandidateStatus = {
-  Invited: 'Invited',
-  In_progress: 'In progress',
-  Submitted: 'Submitted',
-  Analyzed: 'Analyzed',
-} as const;
-
-export interface Candidate {
-  id: string;
-  audition_id: string;
-  name: string;
-  email: string;
-  status: CandidateStatus;
-  created_at: string;
-}
-
 export interface InviteInput {
   /** @minLength 32 */
   invite_token: string;
@@ -241,38 +402,6 @@ export interface SessionInput {
   candidate_id: string;
   /** @minLength 32 */
   invite_token: string;
-}
-
-export type SessionStatus = typeof SessionStatus[keyof typeof SessionStatus];
-
-
-export const SessionStatus = {
-  In_progress: 'In progress',
-  Submitted: 'Submitted',
-} as const;
-
-/**
- * @nullable
- */
-export type SessionFinishReason = typeof SessionFinishReason[keyof typeof SessionFinishReason] | null;
-
-
-export const SessionFinishReason = {
-  time_limit: 'time_limit',
-  finished_early: 'finished_early',
-} as const;
-
-export interface Session {
-  id: string;
-  candidate_id: string;
-  server_start_time: string;
-  /** Derived as server_start_time plus 360 seconds */
-  deadline_at: string;
-  status: SessionStatus;
-  /** @nullable */
-  submitted_at: string | null;
-  /** @nullable */
-  finish_reason: SessionFinishReason;
 }
 
 export type SessionSubmissionReason = typeof SessionSubmissionReason[keyof typeof SessionSubmissionReason];
@@ -479,6 +608,16 @@ export interface CredentialVerification {
   session_data_hash?: string;
   issued_at?: string;
 }
+
+/**
+ * Server-authoritative session state and clock
+ */
+export type RoomSessionResultResponse = RoomSession;
+
+/**
+ * Idempotently stored private evidence
+ */
+export type RoomEvidenceResultResponse = RoomEvidence;
 
 /**
  * Invalid test, unavailable audio, or diagnostics disabled outside development

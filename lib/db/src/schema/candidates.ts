@@ -6,6 +6,7 @@ import { candidateStatus } from "./enums";
 
 export const candidatesTable = pgTable("candidates", {
   id: uuid("id").primaryKey().defaultRandom(),
+  inviteToken: text("invite_token").unique(),
   auditionId: uuid("audition_id").notNull().references(() => auditionsTable.id),
   name: text("name").notNull(),
   email: text("email").notNull(),

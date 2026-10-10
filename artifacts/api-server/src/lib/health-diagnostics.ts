@@ -1,5 +1,6 @@
 import type { ConnectionCheck, ConnectionCheckId, CompletionDiagnostics } from "@workspace/api-zod";
 import { HEALTH_TEST_IMAGE } from "./health-test-image";
+import { nebiusCompletionBody } from "./nebius-client";
 
 // Model identifiers are public configuration, not credentials.
 const SECRET_NAMES = ["NEBIUS_API_KEY", "ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID"] as const;
@@ -79,21 +80,16 @@ export function createHealthDiagnostics({
 
   function completionPayload(id: "nebius_text" | "nebius_vision") {
     const vision = id === "nebius_vision";
-    return {
-      model: env[vision ? "NEBIUS_VISION_MODEL" : "NEBIUS_TEXT_MODEL"]?.trim() ?? "",
-      messages: [{
+    return nebiusCompletionBody(
+      env[vision ? "NEBIUS_VISION_MODEL" : "NEBIUS_TEXT_MODEL"] ?? "",
+      [{
         role: "user",
         content: vision ? [
           { type: "text", text: "What does this image show? Describe the colored shapes in one short sentence." },
           { type: "image_url", image_url: { url: HEALTH_TEST_IMAGE } },
         ] : "Say OK",
       }],
-      // Completion budgets include reasoning tokens on Qwen thinking models.
-      // The previous 32/128 budgets could finish before any answer text.
-      max_tokens: 1024,
-      chat_template_kwargs: { enable_thinking: false },
-      temperature: 0,
-    };
+    );
   }
 
   function initial(id: ConnectionCheckId): ConnectionCheck {

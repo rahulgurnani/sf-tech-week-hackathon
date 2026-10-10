@@ -9,6 +9,269 @@ import * as zod from 'zod';
 
 
 /**
+ * Candidate-scoped opaque invite token in Authorization Bearer header; never a provider API key.
+ */
+
+
+
+export const getCandidateRoomResponseAuditionOneFrozenQuestionsItemOneTimeLimitSecondsMax = 180;
+
+
+
+export const GetCandidateRoomResponse = zod.object({
+  "audition": zod.object({
+  "id": zod.string().uuid(),
+  "role": zod.string(),
+  "job_description": zod.string(),
+  "editor_language": zod.string(),
+  "duration_seconds": zod.literal(360),
+  "frozen_questions": zod.array(zod.object({
+  "position": zod.number().int().min(1),
+  "requirement": zod.string().min(1),
+  "prompt": zod.string().min(1),
+  "phase": zod.enum(['Behavioral', 'Technical']),
+  "time_limit_seconds": zod.number().int().min(1).max(getCandidateRoomResponseAuditionOneFrozenQuestionsItemOneTimeLimitSecondsMax)
+}).and(zod.object({
+  "id": zod.string().uuid()
+}))),
+  "created_at": zod.coerce.date()
+}).and(zod.object({
+  "company": zod.string()
+})),
+  "candidate": zod.object({
+  "id": zod.string().uuid(),
+  "audition_id": zod.string().uuid(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "status": zod.enum(['Invited', 'In progress', 'Submitted', 'Analyzed']),
+  "created_at": zod.coerce.date()
+}),
+  "session": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "candidate_id": zod.string().uuid(),
+  "server_start_time": zod.coerce.date(),
+  "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
+  "status": zod.enum(['In progress', 'Submitted']),
+  "submitted_at": zod.coerce.date().nullable(),
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "server_now": zod.coerce.date(),
+  "conversation_id": zod.string().nullable(),
+  "transcript_status": zod.enum(['not_started', 'pending', 'ready', 'error']),
+  "transcript_error": zod.string().nullable()
+})),zod.null()])
+})
+
+
+export const startCandidateRoomBodyCandidateNameMax = 120;
+
+export const startCandidateRoomBodyCandidateEmailMax = 254;
+
+
+
+export const StartCandidateRoomBody = zod.object({
+  "screen_surface": zod.enum(['monitor']),
+  "candidate_name": zod.string().min(1).max(startCandidateRoomBodyCandidateNameMax),
+  "candidate_email": zod.string().email().max(startCandidateRoomBodyCandidateEmailMax)
+})
+
+export const StartCandidateRoomResponse = zod.object({
+  "id": zod.string().uuid(),
+  "candidate_id": zod.string().uuid(),
+  "server_start_time": zod.coerce.date(),
+  "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
+  "status": zod.enum(['In progress', 'Submitted']),
+  "submitted_at": zod.coerce.date().nullable(),
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "server_now": zod.coerce.date(),
+  "conversation_id": zod.string().nullable(),
+  "transcript_status": zod.enum(['not_started', 'pending', 'ready', 'error']),
+  "transcript_error": zod.string().nullable()
+}))
+
+
+export const GetCandidateSessionParams = zod.object({
+  "sessionId": zod.coerce.string().uuid()
+})
+
+export const GetCandidateSessionResponse = zod.object({
+  "id": zod.string().uuid(),
+  "candidate_id": zod.string().uuid(),
+  "server_start_time": zod.coerce.date(),
+  "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
+  "status": zod.enum(['In progress', 'Submitted']),
+  "submitted_at": zod.coerce.date().nullable(),
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "server_now": zod.coerce.date(),
+  "conversation_id": zod.string().nullable(),
+  "transcript_status": zod.enum(['not_started', 'pending', 'ready', 'error']),
+  "transcript_error": zod.string().nullable()
+}))
+
+
+export const GetCandidateVoiceParams = zod.object({
+  "sessionId": zod.coerce.string().uuid()
+})
+
+export const GetCandidateVoiceResponse = zod.object({
+  "signed_url": zod.string(),
+  "dynamic_variables": zod.record(zod.string(), zod.string())
+})
+
+
+export const BindCandidateConversationParams = zod.object({
+  "sessionId": zod.coerce.string().uuid()
+})
+
+export const bindCandidateConversationBodyConversationIdMax = 150;
+
+
+export const bindCandidateConversationBodyConversationIdRegExp = new RegExp('^conv_[A-Za-z0-9_-]+$');
+
+
+export const BindCandidateConversationBody = zod.object({
+  "conversation_id": zod.string().max(bindCandidateConversationBodyConversationIdMax).regex(bindCandidateConversationBodyConversationIdRegExp)
+})
+
+export const BindCandidateConversationResponse = zod.object({
+  "id": zod.string().uuid(),
+  "candidate_id": zod.string().uuid(),
+  "server_start_time": zod.coerce.date(),
+  "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
+  "status": zod.enum(['In progress', 'Submitted']),
+  "submitted_at": zod.coerce.date().nullable(),
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "server_now": zod.coerce.date(),
+  "conversation_id": zod.string().nullable(),
+  "transcript_status": zod.enum(['not_started', 'pending', 'ready', 'error']),
+  "transcript_error": zod.string().nullable()
+}))
+
+
+export const SaveCandidateSnapshotParams = zod.object({
+  "sessionId": zod.coerce.string().uuid()
+})
+
+export const saveCandidateSnapshotBodyTimestampMsMin = 0;
+export const saveCandidateSnapshotBodyTimestampMsMax = 360000;
+export const saveCandidateSnapshotBodyTimestampMsMultipleOf = 10000;
+
+export const saveCandidateSnapshotBodyContentMax = 60000;
+
+
+
+export const SaveCandidateSnapshotBody = zod.object({
+  "timestamp_ms": zod.number().int().min(saveCandidateSnapshotBodyTimestampMsMin).max(saveCandidateSnapshotBodyTimestampMsMax).multipleOf(saveCandidateSnapshotBodyTimestampMsMultipleOf),
+  "content": zod.string().max(saveCandidateSnapshotBodyContentMax)
+})
+
+export const saveCandidateSnapshotResponseTimestampMsMin = 0;
+export const saveCandidateSnapshotResponseTimestampMsMax = 360000;
+
+
+
+export const SaveCandidateSnapshotResponse = zod.object({
+  "saved": zod.boolean(),
+  "timestamp_ms": zod.number().int().min(saveCandidateSnapshotResponseTimestampMsMin).max(saveCandidateSnapshotResponseTimestampMsMax).describe('Milliseconds elapsed since server_start_time, not an absolute clock time')
+})
+
+
+export const saveCandidateScreenshotPathTimestampMsMin = 180000;
+export const saveCandidateScreenshotPathTimestampMsMax = 360000;
+export const saveCandidateScreenshotPathTimestampMsMultipleOf = 10000;
+
+
+
+export const SaveCandidateScreenshotParams = zod.object({
+  "sessionId": zod.coerce.string().uuid(),
+  "timestampMs": zod.coerce.number().int().min(saveCandidateScreenshotPathTimestampMsMin).max(saveCandidateScreenshotPathTimestampMsMax).multipleOf(saveCandidateScreenshotPathTimestampMsMultipleOf)
+})
+
+export const saveCandidateScreenshotResponseTimestampMsMin = 0;
+export const saveCandidateScreenshotResponseTimestampMsMax = 360000;
+
+
+
+export const SaveCandidateScreenshotResponse = zod.object({
+  "saved": zod.boolean(),
+  "timestamp_ms": zod.number().int().min(saveCandidateScreenshotResponseTimestampMsMin).max(saveCandidateScreenshotResponseTimestampMsMax).describe('Milliseconds elapsed since server_start_time, not an absolute clock time')
+})
+
+
+export const SaveCandidateIntegrityParams = zod.object({
+  "sessionId": zod.coerce.string().uuid()
+})
+
+export const saveCandidateIntegrityBodyTimestampMsMin = 0;
+export const saveCandidateIntegrityBodyTimestampMsMax = 360000;
+
+export const saveCandidateIntegrityBodyCharacterCountMin = 51;
+export const saveCandidateIntegrityBodyCharacterCountMax = 1000000;
+
+
+
+export const SaveCandidateIntegrityBody = zod.object({
+  "event_id": zod.string().uuid(),
+  "timestamp_ms": zod.number().int().min(saveCandidateIntegrityBodyTimestampMsMin).max(saveCandidateIntegrityBodyTimestampMsMax).describe('Milliseconds elapsed since server_start_time, not an absolute clock time'),
+  "type": zod.enum(['page_left', 'window_blur', 'large_paste', 'screen_share_stopped']),
+  "character_count": zod.number().int().min(saveCandidateIntegrityBodyCharacterCountMin).max(saveCandidateIntegrityBodyCharacterCountMax).optional()
+})
+
+export const saveCandidateIntegrityResponseTimestampMsMin = 0;
+export const saveCandidateIntegrityResponseTimestampMsMax = 360000;
+
+
+
+export const SaveCandidateIntegrityResponse = zod.object({
+  "saved": zod.boolean(),
+  "timestamp_ms": zod.number().int().min(saveCandidateIntegrityResponseTimestampMsMin).max(saveCandidateIntegrityResponseTimestampMsMax).describe('Milliseconds elapsed since server_start_time, not an absolute clock time')
+})
+
+
+export const SaveCandidateCommandParams = zod.object({
+  "sessionId": zod.coerce.string().uuid()
+})
+
+export const SaveCandidateCommandBody = zod.object({
+  "command_id": zod.string().uuid(),
+  "kind": zod.enum(['initial_context', 'technical_start', 'wrap_up', 'time_check', 'page_left', 'screen_share_stopped'])
+})
+
+export const SaveCandidateCommandResponse = zod.object({
+  "text": zod.string(),
+  "delivery": zod.enum(['user_message', 'contextual_update']),
+  "is_app_message": zod.literal(true)
+})
+
+
+export const SubmitCandidateRoomParams = zod.object({
+  "sessionId": zod.coerce.string().uuid()
+})
+
+export const SubmitCandidateRoomBody = zod.object({
+  "reason": zod.enum(['time_limit', 'finished_early'])
+})
+
+export const SubmitCandidateRoomResponse = zod.object({
+  "id": zod.string().uuid(),
+  "candidate_id": zod.string().uuid(),
+  "server_start_time": zod.coerce.date(),
+  "deadline_at": zod.coerce.date().describe('Derived as server_start_time plus 360 seconds'),
+  "status": zod.enum(['In progress', 'Submitted']),
+  "submitted_at": zod.coerce.date().nullable(),
+  "finish_reason": zod.union([zod.literal('time_limit'),zod.literal('finished_early'),zod.literal(null)]).nullable()
+}).and(zod.object({
+  "server_now": zod.coerce.date(),
+  "conversation_id": zod.string().nullable(),
+  "transcript_status": zod.enum(['not_started', 'pending', 'ready', 'error']),
+  "transcript_error": zod.string().nullable()
+}))
+
+
+/**
  * @summary Read configuration and most recent diagnostic results without provider calls
  */
 export const getAdminHealthResponseChecksItemLatencyMsMin = 0;
